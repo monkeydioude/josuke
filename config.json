@@ -1,0 +1,32 @@
+[
+    {
+        "repo": "monkeydioude/donut",
+        "branches":
+        [
+            {
+                "branch" :"master",
+                "actions":
+                [
+                    {
+                        "action": "push",
+                        "commands":
+                        [
+                            {
+                                "git": ["fetch", "--all"]
+                            },
+                            {
+                                "git": ["checkout", "master"]
+                            },
+                            {
+                                "git": ["reset", "--hard", "origin/master"]
+                            },
+                            {
+                                "make": []
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    }
+]
