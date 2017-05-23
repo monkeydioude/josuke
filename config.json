@@ -1,6 +1,7 @@
 [
     {
         "repo": "monkeydioude/donut",
+        "dir" :"/var/www",
         "branches":
         [
             {
@@ -11,18 +12,10 @@
                         "action": "push",
                         "commands":
                         [
-                            {
-                                "git": ["fetch", "--all"]
-                            },
-                            {
-                                "git": ["checkout", "master"]
-                            },
-                            {
-                                "git": ["reset", "--hard", "origin/master"]
-                            },
-                            {
-                                "make": []
-                            }
+                            ["git", "fetch", "--all"],
+                            ["git", "checkout", "master"],
+                            ["git", "reset", "--hard", "origin/master"],
+                            ["make"]
                         ]
                     }
                 ]

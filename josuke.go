@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -13,16 +14,19 @@ import (
 	"regexp"
 )
 
-// Payload translation of github json into struct
 type Payload struct {
-	Ref string `json:"ref"`
+	Ref        string `json:"ref"`
+	Repository struct {
+		Name string `json:"full_name"`
+	} `json:"repository"`
 }
 
-type Repos []Repo
+type Config []Repo
 
 type Repo struct {
 	Name     string   `json:"repo"`
-	Branches []Branch `json:"branches`
+	Branches []Branch `json:"branches"`
+	Dir      string   `json:"dir"`
 }
 
 type Branch struct {
@@ -31,9 +35,11 @@ type Branch struct {
 }
 
 type Action struct {
-	Action   string                `json:"action"`
-	Commands []map[string][]string `json:"commands"`
+	Action   string     `json:"action"`
+	Commands [][]string `json:"commands"`
 }
+
+var config Config
 
 func pushRequest(payload *Payload, rw http.ResponseWriter) error {
 	reg, err := regexp.Compile("^.+/.+/(.+)$")
@@ -87,15 +93,8 @@ func deploy(rw http.ResponseWriter, req *http.Request) {
 	buf := new(bytes.Buffer)
 	buf.ReadFrom(req.Body)
 	defer req.Body.Close()
+	fmt.Println(payload)
 	if req.Header.Get("x-github-event") == "push" {
-		file, e := ioutil.ReadFile("./config.json")
-		if e != nil {
-			panic(e)
-		}
-		fmt.Println(string(file))
-		var repos Repos
-		json.Unmarshal(file, &repos)
-		fmt.Printf("%v\n", repos[0])
 		// if pushRequest(payload, rw) != nil {
 		// 	fmt.Print(err.Error())
 		// }
@@ -103,6 +102,15 @@ func deploy(rw http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
+	configFileName := flag.String("c", "config.json", "Path to config file")
+	port := flag.Int("p", 8082, "Port server will listen to")
+	file, err := ioutil.ReadFile(*configFileName)
+	if err != nil {
+		log.Fatalf("Could not read config file: %v", err)
+	}
+	if err := json.Unmarshal(file, &config); err != nil {
+		log.Fatalf("Could not parse json from config file")
+	}
 	http.HandleFunc("/deploy", deploy)
-	log.Fatal(http.ListenAndServe(":8082", nil))
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", *port), nil))
 }
