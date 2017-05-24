@@ -16,6 +16,7 @@ import (
 
 type Payload struct {
 	Ref        string `json:"ref"`
+	Action     string
 	Repository struct {
 		Name string `json:"full_name"`
 	} `json:"repository"`
@@ -35,11 +36,15 @@ type Branch struct {
 }
 
 type Action struct {
-	Action   string     `json:"action"`
-	Commands [][]string `json:"commands"`
+	Action   string   `json:"action"`
+	Commands Commands `json:"commands"`
+	Dir      string
 }
 
+type Commands [][]string
+
 var config Config
+var staticRefPrefix = "refs/heads/"
 
 func pushRequest(payload *Payload, rw http.ResponseWriter) error {
 	reg, err := regexp.Compile("^.+/.+/(.+)$")
@@ -84,7 +89,64 @@ func pushRequest(payload *Payload, rw http.ResponseWriter) error {
 	return nil
 }
 
-func deploy(rw http.ResponseWriter, req *http.Request) {
+func (a Action) matches(trial string) bool {
+	return a.Action == trial
+}
+
+func (b Branch) matches(trial string) bool {
+	return b.Name == trial
+}
+
+func (r Repo) matches(trial string) bool {
+	return r.Name == fmt.Sprintf("%s%s", staticRefPrefix, trial)
+}
+
+func (p *Payload) getAction(b *Branch) *Action {
+	for _, action := range b.Actions {
+		if action.matches(p.Action) {
+			return &action
+		}
+	}
+	return nil
+}
+
+func (p *Payload) getBranch(r *Repo) *Branch {
+	for _, branch := range r.Branches {
+		if branch.matches(p.Ref) {
+			return &branch
+		}
+	}
+	return nil
+}
+
+func (p *Payload) getRepo() *Repo {
+	for _, repo := range config {
+		if repo.matches(p.Repository.Name) {
+			return &repo
+		}
+	}
+	return nil
+}
+
+func (p *Payload) getDeployData() *Action {
+	repo := p.getRepo()
+	if repo == nil {
+		fmt.Println("Could not match any repo in config file. We'll just do nothing.")
+		return nil
+	}
+	branch := p.getBranch(repo)
+	if repo == nil {
+		fmt.Println("Could not find any matching branch. We'll just do nothing.")
+		return nil
+	}
+	// ref = fmt.Sprintf("%s%s", staticRefPrefix, )
+	return p.getAction(branch)
+}
+
+func (c *Action) deploy() {
+}
+
+func request(rw http.ResponseWriter, req *http.Request) {
 	payload := new(Payload)
 	err := json.NewDecoder(req.Body).Decode(payload)
 	if err != nil {
@@ -93,12 +155,16 @@ func deploy(rw http.ResponseWriter, req *http.Request) {
 	buf := new(bytes.Buffer)
 	buf.ReadFrom(req.Body)
 	defer req.Body.Close()
-	fmt.Println(payload)
-	if req.Header.Get("x-github-event") == "push" {
-		// if pushRequest(payload, rw) != nil {
-		// 	fmt.Print(err.Error())
-		// }
+	action := req.Header.Get("x-github-event")
+	if action == "" {
+		return
 	}
+	payload.Action = action
+	data := payload.getDeployData()
+	if data == nil {
+		return
+	}
+	data.deploy()
 }
 
 func main() {
@@ -111,6 +177,6 @@ func main() {
 	if err := json.Unmarshal(file, &config); err != nil {
 		log.Fatalf("Could not parse json from config file")
 	}
-	http.HandleFunc("/deploy", deploy)
+	http.HandleFunc("/deploy", request)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", *port), nil))
 }
