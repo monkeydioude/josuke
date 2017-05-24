@@ -1,22 +1,21 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"os/exec"
-	"regexp"
 )
 
 type Payload struct {
 	Ref        string `json:"ref"`
 	Action     string
+	HtmlUrl    string `json:"html_url"`
 	Repository struct {
 		Name string `json:"full_name"`
 	} `json:"repository"`
@@ -27,7 +26,13 @@ type Config []Repo
 type Repo struct {
 	Name     string   `json:"repo"`
 	Branches []Branch `json:"branches"`
-	Dir      string   `json:"dir"`
+	Info     Info
+}
+
+type Info struct {
+	BaseDir string `json:"base_dir"`
+	ProjDir string `json:"proj_dir"`
+	HtmlUrl string
 }
 
 type Branch struct {
@@ -38,7 +43,6 @@ type Branch struct {
 type Action struct {
 	Action   string   `json:"action"`
 	Commands Commands `json:"commands"`
-	Dir      string
 }
 
 type Commands [][]string
@@ -46,47 +50,29 @@ type Commands [][]string
 var config Config
 var staticRefPrefix = "refs/heads/"
 
-func pushRequest(payload *Payload, rw http.ResponseWriter) error {
-	reg, err := regexp.Compile("^.+/.+/(.+)$")
-
-	if err != nil {
-		return errors.New("Could not compile Regexp")
+func executeCommand(c []string) error {
+	if len(c) == 0 {
+		return fmt.Errorf("Empy command slice")
 	}
-
-	branches := reg.FindStringSubmatch(payload.Ref)
-
-	if len(branches) <= 1 {
-		return errors.New("Could not find ref branch")
+	name := c[0]
+	var args []string
+	if len(c) > 1 {
+		args = c[1:len(c)]
 	}
-	os.Chdir("/var/www")
-	//      branch := branches[1]
-	cmdName := "git"
-	cmdArgs := []string{"clone", "git@github.com:monkeydioude/donut.git"}
-	cmd := exec.Command(cmdName, cmdArgs...)
-	if _, err = os.Stat("donut"); os.IsNotExist(err) {
-		cmd.Run()
-	}
-	// if err = cmd.Run(); err != nil {
-	//      return errors.New("Could not Execute Command git")
-	// }
-	os.Chdir("donut")
-	cmdName = "git"
-	cmdArgs = []string{"fetch", "--all"}
-	cmd = exec.Command(cmdName, cmdArgs...)
-	cmd.Run()
-	cmdName = "git"
-	cmdArgs = []string{"checkout", "master"}
-	cmd = exec.Command(cmdName, cmdArgs...)
-	cmd.Run()
-	cmdName = "git"
-	cmdArgs = []string{"reset", "--hard", "origin/master"}
-	cmd = exec.Command(cmdName, cmdArgs...)
-	cmd.Run()
-	cmdName = "make"
-	cmdArgs = []string{}
-	cmd = exec.Command(cmdName, cmdArgs...)
+	cmd := exec.Command(name, args...)
 	cmd.Run()
 	return nil
+}
+
+func (a *Action) deploy(i *Info) {
+	os.Chdir(i.BaseDir)
+	if _, err := os.Stat(i.ProjDir); os.IsNotExist(err) {
+		executeCommand([]string{"git", "clone", i.HtmlUrl})
+	}
+	os.Chdir(i.ProjDir)
+	for _, command := range a.Commands {
+		executeCommand(command)
+	}
 }
 
 func (a Action) matches(trial string) bool {
@@ -128,43 +114,54 @@ func (p *Payload) getRepo() *Repo {
 	return nil
 }
 
-func (p *Payload) getDeployData() *Action {
+func (p *Payload) getDeployAction() (*Action, *Info) {
 	repo := p.getRepo()
 	if repo == nil {
 		fmt.Println("Could not match any repo in config file. We'll just do nothing.")
-		return nil
+		return nil, nil
 	}
 	branch := p.getBranch(repo)
 	if repo == nil {
 		fmt.Println("Could not find any matching branch. We'll just do nothing.")
-		return nil
+		return nil, nil
 	}
 	// ref = fmt.Sprintf("%s%s", staticRefPrefix, )
-	return p.getAction(branch)
+	action := p.getAction(branch)
+	if action == nil {
+		fmt.Println("Could not find any matchin action. We'll just do nothing.")
+		return nil, nil
+	}
+	repo.Info.HtmlUrl = p.HtmlUrl
+	return action, &repo.Info
 }
 
-func (c *Action) deploy() {
-}
-
-func request(rw http.ResponseWriter, req *http.Request) {
+func fetchPayload(r io.Reader) *Payload {
 	payload := new(Payload)
-	err := json.NewDecoder(req.Body).Decode(payload)
+	err := json.NewDecoder(r).Decode(payload)
 	if err != nil {
 		panic(err)
 	}
-	buf := new(bytes.Buffer)
-	buf.ReadFrom(req.Body)
+	return payload
+}
+
+func request(rw http.ResponseWriter, req *http.Request) {
+	var action string
+	payload := fetchPayload(req.Body)
+
 	defer req.Body.Close()
-	action := req.Header.Get("x-github-event")
-	if action == "" {
+
+	if action = req.Header.Get("x-github-event"); action == "" {
 		return
 	}
+
 	payload.Action = action
-	data := payload.getDeployData()
+
+	data, info := payload.getDeployAction()
 	if data == nil {
 		return
 	}
-	data.deploy()
+
+	data.deploy(info)
 }
 
 func main() {

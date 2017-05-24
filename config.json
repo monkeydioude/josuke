@@ -1,7 +1,8 @@
 [
     {
         "repo": "monkeydioude/donut",
-        "dir" :"/var/www",
+        "proj_dir": "donut",
+        "base_dir": "/var/www",
         "branches":
         [
             {
