@@ -1,12 +1,9 @@
-package main
+package josuke
 
 import (
 	"encoding/json"
-	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"os/exec"
@@ -31,7 +28,7 @@ func (p *Payload) getBranch(r *Repo) *Branch {
 }
 
 func (p *Payload) getRepo() *Repo {
-	for _, repo := range config {
+	for _, repo := range Config {
 		if repo.matches(p.Repository.Name) {
 			return &repo
 		}
@@ -69,8 +66,6 @@ func (p *Payload) getAction(b *Branch) *Action {
 	return nil
 }
 
-type Config []Repo
-
 type Repo struct {
 	Name     string   `json:"repo"`
 	Branches []Branch `json:"branches"`
@@ -97,8 +92,8 @@ func (b Branch) matches(trial string) bool {
 }
 
 type Action struct {
-	Action   string   `json:"action"`
-	Commands Commands `json:"commands"`
+	Action   string     `json:"action"`
+	Commands [][]string `json:"commands"`
 }
 
 func (a *Action) execute(i *Info) error {
@@ -118,9 +113,7 @@ func (a Action) matches(trial string) bool {
 	return a.Action == trial
 }
 
-type Commands [][]string
-
-var config Config
+var Config []Repo
 var staticRefPrefix = "refs/heads/"
 
 func fetchPayload(r io.Reader) *Payload {
@@ -146,7 +139,7 @@ func ExecuteCommand(c []string) error {
 	return nil
 }
 
-func request(rw http.ResponseWriter, req *http.Request) {
+func Request(rw http.ResponseWriter, req *http.Request) {
 	var githubEvent string
 	payload := fetchPayload(req.Body)
 
@@ -166,22 +159,4 @@ func request(rw http.ResponseWriter, req *http.Request) {
 	if action.execute(info) != nil {
 		fmt.Println("could not execute action")
 	}
-}
-
-func main() {
-	configFileName := flag.String("c", "config.json", "Path to config file")
-	port := flag.Int("p", 8082, "Port server will listen to")
-	uri := flag.String("u", "", "URI webhook will listen to")
-	file, err := ioutil.ReadFile(*configFileName)
-
-	if err != nil {
-		log.Fatalf("Could not read config file: %v", err)
-	}
-
-	if err := json.Unmarshal(file, &config); err != nil {
-		log.Fatalf("Could not parse json from config file")
-	}
-
-	http.HandleFunc(fmt.Sprintf("/%s", *uri), request)
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", *port), nil))
 }
