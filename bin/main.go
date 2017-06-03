@@ -15,6 +15,8 @@ func main() {
 	configFileName := flag.String("c", "config.json", "Path to config file")
 	port := flag.Int("p", 8082, "Port server will listen to")
 	uri := flag.String("u", "", "URI webhook will listen to")
+	flag.Parse()
+
 	file, err := ioutil.ReadFile(*configFileName)
 
 	if err != nil {
