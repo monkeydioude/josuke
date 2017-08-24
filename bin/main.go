@@ -7,17 +7,29 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 
 	josuke "github.com/monkeydioude/josuke"
 )
 
+func getCwd() string {
+	ex, err := os.Executable()
+
+	if err != nil {
+		log.Fatal("Could not resolve os.Executable")
+	}
+
+	return filepath.Dir(ex)
+}
+
 func main() {
-	configFileName := flag.String("c", "config.json", "Path to config file")
+	configFileName := fmt.Sprintf("%s/%s", getCwd(), *flag.String("c", "config.json", "Path to config file"))
 	port := flag.Int("p", 8082, "Port server will listen to")
 	uri := flag.String("u", "", "URI webhook will listen to")
 	flag.Parse()
 
-	file, err := ioutil.ReadFile(*configFileName)
+	file, err := ioutil.ReadFile(configFileName)
 
 	if err != nil {
 		log.Fatalf("Could not read config file: %v", err)
