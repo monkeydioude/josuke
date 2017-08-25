@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	josuke "github.com/monkeydioude/josuke"
 )
@@ -26,7 +27,8 @@ func getCwd() string {
 func main() {
 	configFileName := fmt.Sprintf("%s/%s", getCwd(), *flag.String("c", "config.json", "Path to config file"))
 	port := flag.Int("p", 8082, "Port server will listen to")
-	uri := flag.String("u", "", "URI webhook will listen to")
+	uri := flag.String("u", "josuke", "URI webhook will listen to")
+	httpPort := flag.Int("hp", 8083, "Http Server Listener")
 	flag.Parse()
 
 	file, err := ioutil.ReadFile(configFileName)
@@ -39,6 +41,19 @@ func main() {
 		log.Fatalf("Could not parse json from config file")
 	}
 
-	http.HandleFunc(fmt.Sprintf("/%s", *uri), josuke.Request)
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", *port), nil))
+	go func(httpPort int) {
+		http.HandleFunc("/", josuke.HttpHandle)
+		log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", httpPort), nil))
+	}(*httpPort)
+
+	s := &http.Server{
+		Addr: fmt.Sprintf(":%d", *port),
+		Handler: &josuke.Handler{
+			Uri: *uri,
+		},
+		ReadTimeout:    10 * time.Second,
+		WriteTimeout:   10 * time.Second,
+		MaxHeaderBytes: 1 << 20,
+	}
+	log.Fatal(s.ListenAndServe())
 }
