@@ -36,6 +36,6 @@ The said config file is an array of json object defined as such:
 ```
 
 3 Keywords might be used for a lil' dynamic in your deployments:
-- %base_dir%: referring to "base_dir" set in config
-- %proj_dir%: referring to "proj_dir" set in config
-- %html_url%: retrieved from github's payload informations, html url of your repo (might be used, for example, in case of cloning repo)
+- `%base_dir%`: referring to "base_dir" set in config
+- `%proj_dir%`: referring to "proj_dir" set in config
+- `%html_url%`: retrieved from github's payload informations, html url of your repo (might be used, for example, in case of cloning repo)
