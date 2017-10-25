@@ -28,7 +28,6 @@ func main() {
 	configFileName := fmt.Sprintf("%s/%s", getCwd(), *flag.String("c", "config.json", "Path to config file"))
 	port := flag.Int("p", 8082, "Port server will listen to")
 	uri := flag.String("u", "josuke", "URI webhook will listen to")
-	httpPort := flag.Int("hp", 8083, "Http Server Listener")
 	flag.Parse()
 
 	file, err := ioutil.ReadFile(configFileName)
@@ -40,11 +39,6 @@ func main() {
 	if err := json.Unmarshal(file, &josuke.Config); err != nil {
 		log.Fatalf("Could not parse json from config file")
 	}
-
-	go func(httpPort int) {
-		http.HandleFunc("/", josuke.HttpHandle)
-		log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", httpPort), nil))
-	}(*httpPort)
 
 	s := &http.Server{
 		Addr: fmt.Sprintf(":%d", *port),
