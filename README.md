@@ -17,6 +17,10 @@ The said config file is an array of json object defined as such:
                     {
                         "action": "push",
                         "commands": []
+                    }
+                ]
+            }
+        ]
 ```
 - Commands is an optional array of array of strings, it may contains any command you want. 1st index of the array must be the command name. Every following index should be args of the command:
 ```
