@@ -1,4 +1,4 @@
-package josuke
+package main
 
 import (
 	"encoding/json"
@@ -21,15 +21,17 @@ var keyholders = map[string]interface{}{
 	},
 }
 
+type Repository struct {
+	Name    string `json:"full_name"`
+	HtmlUrl string `json:"html_url"`
+}
+
 // Payload fetching useful data from github's json payload
 type Payload struct {
 	Ref        string `json:"ref"`
 	Action     string
 	HtmlUrl    string
-	Repository struct {
-		Name    string `json:"full_name"`
-		HtmlUrl string `json:"html_url"`
-	} `json:"repository"`
+	Repository Repository `json:"repository"`
 }
 
 // retrieve branch name from config using Payload and matching config's Repo
@@ -60,7 +62,7 @@ func (p *Payload) getDeployAction() (*Action, *Info) {
 		return nil, nil
 	}
 	branch := p.getBranch(repo)
-	if repo == nil {
+	if branch == nil {
 		fmt.Println("Could not find any matching branch. We'll just do nothing.")
 		return nil, nil
 	}
@@ -198,7 +200,7 @@ func ExecuteCommand(c []string, i *Info) error {
 }
 
 // Request handle github's webhook triggers
-func Request(rw http.ResponseWriter, req *http.Request) {
+func GithubRequest(rw http.ResponseWriter, req *http.Request) {
 	var githubEvent string
 	payload := fetchPayload(req.Body)
 
@@ -209,6 +211,21 @@ func Request(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	payload.Action = githubEvent
+
+	action, info := payload.getDeployAction()
+	if action == nil {
+		return
+	}
+
+	if err := action.execute(info); err != nil {
+		fmt.Println(err.Error())
+	}
+}
+
+func BitbucketRequest(rw http.ResponseWriter, req *http.Request) {
+	payload := bitbucketToPayload(req.Body)
+
+	defer req.Body.Close()
 
 	action, info := payload.getDeployAction()
 	if action == nil {

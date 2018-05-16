@@ -1,0 +1,50 @@
+[
+    {
+        "repo": "monkeydioude/donut",
+        "proj_dir": "donut",
+        "base_dir": "/var/www",
+        "branches":
+        [
+            {
+                "branch" :"master",
+                "actions":
+                [
+                    {
+                        "action": "push",
+                        "commands":
+                        [
+                            ["cd", "%base_dir%"],
+                            ["git", "clone", "%html_url%"],
+                            ["cd", "%proj_dir%"],
+                            ["git", "fetch", "--all"],
+                            ["git", "checkout", "master"],
+                            ["git", "reset", "--hard", "origin/master"],
+                            ["make"]
+                        ]
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "repo": "drannoc/klickclak",
+        "proj_dir": "klickclak",
+        "base_dir": "/var/go/src/bitbucket.org/drannoc",
+        "branches":
+        [
+            {
+                "branch" :"master",
+                "actions":
+                [
+                    {
+                        "action": "push",
+                        "commands":
+                        [
+                            ["make", "prod"]
+                        ]
+                    }
+                ]
+            }
+        ]
+    }
+]

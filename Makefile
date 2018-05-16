@@ -2,9 +2,6 @@ all: test build run
 
 dall: test docker
 
-test:
-	go test
-
 build:
 	go install
 	go build -o bin/josuke ./bin
