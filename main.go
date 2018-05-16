@@ -22,12 +22,12 @@ func getCwd() string {
 }
 
 func main() {
-	configFileName := fmt.Sprintf("%s/%s", getCwd(), *flag.String("c", "config.json", "Path to config file"))
+	configFileName := flag.String("c", "config.json", "Path to config file")
 	port := flag.Int("p", 8082, "Port server will listen to")
 	uri := flag.String("u", "josuke", "URI webhook will listen to")
 	flag.Parse()
 
-	file, err := ioutil.ReadFile(configFileName)
+	file, err := ioutil.ReadFile(*configFileName)
 
 	if err != nil {
 		log.Fatalf("Could not read config file: %v", err)
