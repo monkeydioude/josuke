@@ -15,7 +15,7 @@ func getCwd() string {
 	ex, err := os.Executable()
 
 	if err != nil {
-		log.Fatal("Could not resolve os.Executable")
+		log.Fatal("[ERR ] Could not resolve os.Executable")
 	}
 
 	return filepath.Dir(ex)
@@ -30,11 +30,11 @@ func main() {
 	file, err := ioutil.ReadFile(*configFileName)
 
 	if err != nil {
-		log.Fatalf("Could not read config file: %v", err)
+		log.Fatalf("[ERR ] Could not read config file: %v", err)
 	}
 
 	if err := json.Unmarshal(file, &Config); err != nil {
-		log.Fatalf("Could not parse json from config file")
+		log.Fatalf("[ERR ] Could not parse json from config file")
 	}
 
 	http.HandleFunc(fmt.Sprintf("/%s/github", *uri), GithubRequest)

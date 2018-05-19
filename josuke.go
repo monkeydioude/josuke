@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"os/exec"
@@ -58,18 +59,18 @@ func (p *Payload) getRepo() *Repo {
 func (p *Payload) getDeployAction() (*Action, *Info) {
 	repo := p.getRepo()
 	if repo == nil {
-		fmt.Println("Could not match any repo in config file. We'll just do nothing.")
+		log.Println("[WARN] Could not match any repo in config file. We'll just do nothing.")
 		return nil, nil
 	}
 	branch := p.getBranch(repo)
 	if branch == nil {
-		fmt.Println("Could not find any matching branch. We'll just do nothing.")
+		log.Println("[WARN] Could not find any matching branch. We'll just do nothing.")
 		return nil, nil
 	}
 	// ref = fmt.Sprintf("%s%s", staticRefPrefix, )
 	action := p.getAction(branch)
 	if action == nil {
-		fmt.Println("Could not find any matchin action. We'll just do nothing.")
+		log.Println("[WARN] Could not find any matchin action. We'll just do nothing.")
 		return nil, nil
 	}
 	return action, &Info{
@@ -150,7 +151,8 @@ func fetchPayload(r io.Reader) *Payload {
 	payload := new(Payload)
 	err := json.NewDecoder(r).Decode(payload)
 	if err != nil {
-		panic(err)
+		log.Printf("[ERR ] %s", err)
+		return nil
 	}
 	return payload
 }
@@ -194,19 +196,21 @@ func ExecuteCommand(c []string, i *Info) error {
 	args = replaceKeyholders(args, i)
 	cmd := exec.Command(name, args...)
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("Could not execute command %s %v: %s", name, args, err.Error())
+		return fmt.Errorf("Could not execute command %s %v: %s", name, args, err)
 	}
 	return nil
 }
 
 // Request handle github's webhook triggers
 func GithubRequest(rw http.ResponseWriter, req *http.Request) {
+	log.Printf("[INFO] Caught call from GitHub %+v\n", req.URL)
 	var githubEvent string
 	payload := fetchPayload(req.Body)
 
 	defer req.Body.Close()
 
 	if githubEvent = req.Header.Get("x-github-event"); githubEvent == "" {
+		log.Println("[ERR ] x-github-event was empty in headers")
 		return
 	}
 
@@ -214,25 +218,28 @@ func GithubRequest(rw http.ResponseWriter, req *http.Request) {
 
 	action, info := payload.getDeployAction()
 	if action == nil {
+		log.Println("[ERR ] Could not retrieve any action")
 		return
 	}
 
 	if err := action.execute(info); err != nil {
-		fmt.Println(err.Error())
+		log.Printf("[ERR ] Could not execute action. Reason: %s", err)
 	}
 }
 
 func BitbucketRequest(rw http.ResponseWriter, req *http.Request) {
+	log.Printf("[INFO] Caught call from BitBucket %+v\n", req.URL)
 	payload := bitbucketToPayload(req.Body)
 
 	defer req.Body.Close()
 
 	action, info := payload.getDeployAction()
 	if action == nil {
+		log.Println("[ERR ] Could not retrieve any action")
 		return
 	}
 
 	if err := action.execute(info); err != nil {
-		fmt.Println(err.Error())
+		log.Printf("[ERR ] Could not execute action. Reason: %s", err)
 	}
 }

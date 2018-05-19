@@ -31,7 +31,12 @@ func bitbucketToPayload(r io.Reader) *Payload {
 	err := json.NewDecoder(r).Decode(&b)
 
 	if err != nil {
-		log.Printf("[WARN] %s", err)
+		log.Printf("[ERR ] %s", err)
+		return nil
+	}
+
+	if len(b.Push.Changes) == 0 {
+		log.Println("[ERR ] Could not decode body into Payload")
 		return nil
 	}
 
