@@ -25,26 +25,5 @@
                 ]
             }
         ]
-    },
-    {
-        "repo": "drannoc/klickclak",
-        "proj_dir": "klickclak",
-        "base_dir": "/var/go/src/bitbucket.org/drannoc",
-        "branches":
-        [
-            {
-                "branch" :"master",
-                "actions":
-                [
-                    {
-                        "action": "push",
-                        "commands":
-                        [
-                            ["make", "prod"]
-                        ]
-                    }
-                ]
-            }
-        ]
     }
 ]
