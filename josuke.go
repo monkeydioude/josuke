@@ -147,14 +147,13 @@ func (a Action) matches(trial string) bool {
 var Config []Repo
 var staticRefPrefix = "refs/heads/"
 
-func fetchPayload(r io.Reader) *Payload {
+func fetchPayload(r io.Reader) (*Payload, error) {
 	payload := new(Payload)
 	err := json.NewDecoder(r).Decode(payload)
 	if err != nil {
-		log.Printf("[ERR ] %s", err)
-		return nil
+		return nil, err
 	}
-	return payload
+	return payload, nil
 }
 
 func chdir(args []string, i *Info) error {
@@ -205,9 +204,14 @@ func ExecuteCommand(c []string, i *Info) error {
 func GithubRequest(rw http.ResponseWriter, req *http.Request) {
 	log.Printf("[INFO] Caught call from GitHub %+v\n", req.URL)
 	var githubEvent string
-	payload := fetchPayload(req.Body)
-
 	defer req.Body.Close()
+
+	payload, err := fetchPayload(req.Body)
+
+	if err != nil {
+		log.Printf("[ERR ] Could not fetch Payload. Reason: %s", err)
+		return
+	}
 
 	if githubEvent = req.Header.Get("x-github-event"); githubEvent == "" {
 		log.Println("[ERR ] x-github-event was empty in headers")
