@@ -1,14 +1,38 @@
-package main
+package josuke
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
-	"net/http"
 	"os"
 	"os/exec"
 )
+
+type Josuke struct {
+	GithubHook    string   `json:"github_hook"`
+	BitbucketHook string   `json:"bitbucket_hook"`
+	Deployment    *[]*Repo `json:"deployment"`
+	Port          int      `json:"port"`
+}
+
+func New(configFilePath string) (*Josuke, error) {
+	file, err := ioutil.ReadFile(configFilePath)
+
+	if err != nil {
+		return nil, fmt.Errorf("Could not read config file: %v", err)
+	}
+
+	j := &Josuke{}
+
+	if err := json.Unmarshal(file, j); err != nil {
+		return nil, errors.New("Could not parse json from config file")
+	}
+
+	return j, nil
+}
 
 var keyholders = map[string]interface{}{
 	"%base_dir%": func(i *Info) string {
@@ -46,18 +70,18 @@ func (p *Payload) getBranch(r *Repo) *Branch {
 }
 
 // retrieve repo from config using Paylaod
-func (p *Payload) getRepo() *Repo {
-	for _, repo := range Config {
+func (p *Payload) getRepo(deployment *[]*Repo) *Repo {
+	for _, repo := range *deployment {
 		if repo.matches(p.Repository.Name) {
-			return &repo
+			return repo
 		}
 	}
 	return nil
 }
 
 // Process of retrieving deploy information from github payload
-func (p *Payload) getDeployAction() (*Action, *Info) {
-	repo := p.getRepo()
+func (p *Payload) getDeployAction(deployment *[]*Repo) (*Action, *Info) {
+	repo := p.getRepo(deployment)
 	if repo == nil {
 		log.Println("[WARN] Could not match any repo in config file. We'll just do nothing.")
 		return nil, nil
@@ -144,7 +168,7 @@ func (a Action) matches(trial string) bool {
 }
 
 // Config mirrors our json config file, used to boot this deployer
-var Config []Repo
+// var Config []Repo
 var staticRefPrefix = "refs/heads/"
 
 func fetchPayload(r io.Reader) (*Payload, error) {
@@ -198,52 +222,4 @@ func ExecuteCommand(c []string, i *Info) error {
 		return fmt.Errorf("Could not execute command %s %v: %s", name, args, err)
 	}
 	return nil
-}
-
-// Request handle github's webhook triggers
-func GithubRequest(rw http.ResponseWriter, req *http.Request) {
-	log.Printf("[INFO] Caught call from GitHub %+v\n", req.URL)
-	var githubEvent string
-	defer req.Body.Close()
-
-	payload, err := fetchPayload(req.Body)
-
-	if err != nil {
-		log.Printf("[ERR ] Could not fetch Payload. Reason: %s", err)
-		return
-	}
-
-	if githubEvent = req.Header.Get("x-github-event"); githubEvent == "" {
-		log.Println("[ERR ] x-github-event was empty in headers")
-		return
-	}
-
-	payload.Action = githubEvent
-
-	action, info := payload.getDeployAction()
-	if action == nil {
-		log.Println("[ERR ] Could not retrieve any action")
-		return
-	}
-
-	if err := action.execute(info); err != nil {
-		log.Printf("[ERR ] Could not execute action. Reason: %s", err)
-	}
-}
-
-func BitbucketRequest(rw http.ResponseWriter, req *http.Request) {
-	log.Printf("[INFO] Caught call from BitBucket %+v\n", req.URL)
-	payload := bitbucketToPayload(req.Body)
-
-	defer req.Body.Close()
-
-	action, info := payload.getDeployAction()
-	if action == nil {
-		log.Println("[ERR ] Could not retrieve any action")
-		return
-	}
-
-	if err := action.execute(info); err != nil {
-		log.Printf("[ERR ] Could not execute action. Reason: %s", err)
-	}
 }

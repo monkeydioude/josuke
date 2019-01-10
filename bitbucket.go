@@ -1,4 +1,4 @@
-package main
+package josuke
 
 import (
 	"encoding/json"
