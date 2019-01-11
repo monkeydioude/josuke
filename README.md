@@ -81,7 +81,6 @@ These **repository rules** objects are defined as such:
 - Docker image for testing/building
 - Makefile for all of this
 - Go1.11 Module compliancy
-- dep vendoring compliancy
 
 _DORA !_
 
