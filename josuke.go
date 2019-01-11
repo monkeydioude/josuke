@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"os"
 	"os/exec"
 )
@@ -34,7 +33,7 @@ func New(configFilePath string) (*Josuke, error) {
 	return j, nil
 }
 
-var keyholders = map[string]interface{}{
+var keyholders = map[string]func(*Info) string{
 	"%base_dir%": func(i *Info) string {
 		return i.BaseDir
 	},
@@ -46,72 +45,10 @@ var keyholders = map[string]interface{}{
 	},
 }
 
+// Repository represents the paylaod repository informations
 type Repository struct {
 	Name    string `json:"full_name"`
 	HtmlUrl string `json:"html_url"`
-}
-
-// Payload fetching useful data from github's json payload
-type Payload struct {
-	Ref        string `json:"ref"`
-	Action     string
-	HtmlUrl    string
-	Repository Repository `json:"repository"`
-}
-
-// retrieve branch name from config using Payload and matching config's Repo
-func (p *Payload) getBranch(r *Repo) *Branch {
-	for _, branch := range r.Branches {
-		if branch.matches(p.Ref) {
-			return &branch
-		}
-	}
-	return nil
-}
-
-// retrieve repo from config using Paylaod
-func (p *Payload) getRepo(deployment *[]*Repo) *Repo {
-	for _, repo := range *deployment {
-		if repo.matches(p.Repository.Name) {
-			return repo
-		}
-	}
-	return nil
-}
-
-// Process of retrieving deploy information from github payload
-func (p *Payload) getDeployAction(deployment *[]*Repo) (*Action, *Info) {
-	repo := p.getRepo(deployment)
-	if repo == nil {
-		log.Println("[WARN] Could not match any repo in config file. We'll just do nothing.")
-		return nil, nil
-	}
-	branch := p.getBranch(repo)
-	if branch == nil {
-		log.Println("[WARN] Could not find any matching branch. We'll just do nothing.")
-		return nil, nil
-	}
-	// ref = fmt.Sprintf("%s%s", staticRefPrefix, )
-	action := p.getAction(branch)
-	if action == nil {
-		log.Println("[WARN] Could not find any matchin action. We'll just do nothing.")
-		return nil, nil
-	}
-	return action, &Info{
-		BaseDir: repo.BaseDir,
-		ProjDir: repo.ProjDir,
-		HtmlUrl: p.Repository.HtmlUrl,
-	}
-}
-
-// retrieve action from config using Payload and matching config's branch
-func (p *Payload) getAction(b *Branch) *Action {
-	for _, action := range b.Actions {
-		if action.matches(p.Action) {
-			return &action
-		}
-	}
-	return nil
 }
 
 // Repo is built from github's json payload, mirroring dir data from config, branches & repo name
@@ -127,7 +64,7 @@ func (r Repo) matches(trial string) bool {
 	return r.Name == trial
 }
 
-// Info contains mixed data about repertory to deploy in and git's repo url
+// Info contains various data about directory to deploy to and git's repo url
 type Info struct {
 	BaseDir string
 	ProjDir string
@@ -172,7 +109,7 @@ func (a Action) matches(trial string) bool {
 var staticRefPrefix = "refs/heads/"
 
 func fetchPayload(r io.Reader) (*Payload, error) {
-	payload := new(Payload)
+	payload := &Payload{}
 	err := json.NewDecoder(r).Decode(payload)
 	if err != nil {
 		return nil, err
@@ -190,8 +127,8 @@ func chdir(args []string, i *Info) error {
 
 func replaceKeyholders(args []string, i *Info) []string {
 	for k, arg := range args {
-		if val, ok := keyholders[arg]; ok {
-			args[k] = val.(func(*Info) string)(i)
+		if fun, ok := keyholders[arg]; ok {
+			args[k] = fun(i)
 		}
 	}
 	return args

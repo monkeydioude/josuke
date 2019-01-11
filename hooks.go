@@ -5,10 +5,9 @@ import (
 	"net/http"
 )
 
-// Request handle github's webhook triggers
+// GithubRequest handles github's webhook triggers
 func (j *Josuke) GithubRequest(rw http.ResponseWriter, req *http.Request) {
 	log.Printf("[INFO] Caught call from GitHub %+v\n", req.URL)
-	var githubEvent string
 	defer req.Body.Close()
 
 	payload, err := fetchPayload(req.Body)
@@ -18,7 +17,8 @@ func (j *Josuke) GithubRequest(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if githubEvent = req.Header.Get("x-github-event"); githubEvent == "" {
+	githubEvent := req.Header.Get("x-github-event")
+	if githubEvent == "" {
 		log.Println("[ERR ] x-github-event was empty in headers")
 		return
 	}
@@ -36,6 +36,7 @@ func (j *Josuke) GithubRequest(rw http.ResponseWriter, req *http.Request) {
 	}
 }
 
+// BitbucketRequest handles github's webhook triggers
 func (j *Josuke) BitbucketRequest(rw http.ResponseWriter, req *http.Request) {
 	log.Printf("[INFO] Caught call from BitBucket %+v\n", req.URL)
 	payload := bitbucketToPayload(req.Body)
