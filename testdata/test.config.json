@@ -7,7 +7,7 @@
         {
             "repo": "monkeydioude/josuke",
             "proj_dir": "josuke",
-            "base_dir": "/var/go/src/github.com/monkeydioude",
+            "base_dir": "/home/mkd/Work/go/src/github.com/monkeydioude",
             "branches":
             [
                 {
@@ -22,8 +22,9 @@
                                 ["git", "clone", "git@github.com:monkeycddioude/josuke.git"],
                                 ["cd", "%proj_dir%"],
                                 ["git", "checkout", "master"],
-                                ["git", "pull", "--rebase"],
-                                ["cd", "bin", "%proj_dir%"],
+                                ["git", "fetch", "--all"],
+                                ["git", "reset", "--hard", "origin/master"],
+                                ["cd", "bin/josuke"],
                                 ["go", "install"],
                                 ["service", "josuke", "restart"]
                             ]
