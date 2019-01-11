@@ -1,6 +1,8 @@
 package josuke
 
-import "log"
+import (
+	"log"
+)
 
 // Payload fetching useful data from github's json payload
 type Payload struct {
