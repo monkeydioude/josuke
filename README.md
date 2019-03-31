@@ -81,7 +81,6 @@ These **repository rules** objects are defined as such:
 - Docker image for testing/building
 - Makefile for all of this
 - Go1.11 Module compliancy
-- Replace %% keywords with mixed with characters in commands, not just check if arg == "%%" keyword
 
 _DORA !_
 
