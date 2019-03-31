@@ -2,8 +2,13 @@
 _ゴゴゴゴゴゴ ！_
 
 Josuke is a tiny Github post treatment tool.
-After being built and launched on your server, you may write a json config file (default ./config.json at binary location), describing what to do when receiving a payload from Github.
-The said config file is an array of json object defined as such:
+
+**Writing a json config file is required.** 
+
+**Config file path must be given using the -c flag** (josuke -c /path/to/config.json).
+
+Example of a classic config.json:
+
 ```json
 {
     "github_hook": "/josuke/github",
