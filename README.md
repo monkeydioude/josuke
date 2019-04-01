@@ -1,7 +1,12 @@
 ## JoJo's Bizarre webhook handler
 _ゴゴゴゴゴゴ ！_
 
-Josuke is a tiny Github post treatment tool.
+Josuke is a tiny CI/deployment tool that reacts on Github/Bitbucket webhook's payload.
+
+Josuke is a simple guy, 3 things and he's happy:
+- Write a JSON config file
+- Run Josuke and feed him your config
+- Go to Github/Bitbucket and set webhooks routes as specified in your config
 
 **Writing a json config file is required.** 
 
