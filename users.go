@@ -2,6 +2,7 @@ package josuke
 
 import (
 	"fmt"
+	"log"
 	"regexp"
 	"syscall"
 )
@@ -40,9 +41,11 @@ func switchUser(user string, users map[string]int) error {
 		return err
 	}
 
+	log.Printf("[INFO] switching to %s uid(%d)\n", user, id)
 	return syscall.Setuid(id)
 }
 
 func switchToRoot() {
+	log.Printf("[INFO] switching back to root uid(%d)\n", rootUID)
 	syscall.Setuid(rootUID)
 }

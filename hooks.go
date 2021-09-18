@@ -34,6 +34,7 @@ func (j *Josuke) GithubRequest(rw http.ResponseWriter, req *http.Request) {
 	if err := action.execute(info); err != nil {
 		log.Printf("[ERR ] Could not execute action. Reason: %s", err)
 	}
+	switchToRoot()
 }
 
 // BitbucketRequest handles github's webhook triggers
@@ -52,4 +53,5 @@ func (j *Josuke) BitbucketRequest(rw http.ResponseWriter, req *http.Request) {
 	if err := action.execute(info); err != nil {
 		log.Printf("[ERR ] Could not execute action. Reason: %s", err)
 	}
+	switchToRoot()
 }

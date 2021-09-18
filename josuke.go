@@ -96,7 +96,6 @@ type Action struct {
 func (a *Action) execute(i *Info) error {
 	for _, command := range a.Commands {
 		if err := ExecuteCommand(command, i); err != nil {
-			switchToRoot()
 			return err
 		}
 	}
