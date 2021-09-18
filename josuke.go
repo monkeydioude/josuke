@@ -21,13 +21,13 @@ func New(configFilePath string) (*Josuke, error) {
 	file, err := ioutil.ReadFile(configFilePath)
 
 	if err != nil {
-		return nil, fmt.Errorf("Could not read config file: %v", err)
+		return nil, fmt.Errorf("could not read config file: %v", err)
 	}
 
 	j := &Josuke{}
 
 	if err := json.Unmarshal(file, j); err != nil {
-		return nil, errors.New("Could not parse json from config file")
+		return nil, errors.New("could not parse json from config file")
 	}
 
 	return j, nil
@@ -53,10 +53,11 @@ type Repository struct {
 
 // Repo is built from github's json payload, mirroring dir data from config, branches & repo name
 type Repo struct {
-	Name     string   `json:"repo"`
-	Branches []Branch `json:"branches"`
-	BaseDir  string   `json:"base_dir"`
-	ProjDir  string   `json:"proj_dir"`
+	Name     string         `json:"repo"`
+	Branches []Branch       `json:"branches"`
+	BaseDir  string         `json:"base_dir"`
+	ProjDir  string         `json:"proj_dir"`
+	Users    map[string]int `json:"users"`
 }
 
 // Matches repo names from payload and config
@@ -69,6 +70,7 @@ type Info struct {
 	BaseDir string
 	ProjDir string
 	HtmlUrl string
+	Users   map[string]int
 }
 
 // Branch mirrors config's branch section, containing branch Name & Actions linked to it
@@ -137,15 +139,19 @@ func replaceKeyholders(args []string, i *Info) []string {
 // ExecuteCommand execute a command and its args coming in a form of a slice of string, using Info
 func ExecuteCommand(c []string, i *Info) error {
 	if len(c) == 0 {
-		return fmt.Errorf("Empy command slice")
+		return fmt.Errorf("empty command slice")
 	}
 	name := c[0]
 	var args []string
 	if len(c) > 1 {
-		args = c[1:len(c)]
+		args = c[1:]
 	}
 	if name == "cd" {
 		return chdir(args, i)
+	}
+
+	if yes, user := isSwitchUserCall(name); yes {
+		return switchUser(user, i.Users)
 	}
 
 	if name == "git" && args[0] == "clone" {
@@ -156,7 +162,7 @@ func ExecuteCommand(c []string, i *Info) error {
 	args = replaceKeyholders(args, i)
 	cmd := exec.Command(name, args...)
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("Could not execute command %s %v: %s", name, args, err)
+		return fmt.Errorf("could not execute command %s %v: %s", name, args, err)
 	}
 	return nil
 }
