@@ -6,6 +6,8 @@ import (
 	"syscall"
 )
 
+var rootUID = 0
+
 func isSwitchUserCall(str string) (bool, string) {
 	regxp, err := regexp.Compile("^%user_(.+)%$")
 	s := 1
@@ -23,7 +25,7 @@ func isSwitchUserCall(str string) (bool, string) {
 
 func getUserID(user string, users map[string]int) (int, error) {
 	if user == "root" {
-		return 0, nil
+		return rootUID, nil
 	}
 	if _, ok := users[user]; !ok {
 		return 0, fmt.Errorf("could not find user's ID for user %s", user)
@@ -39,4 +41,8 @@ func switchUser(user string, users map[string]int) error {
 	}
 
 	return syscall.Setuid(id)
+}
+
+func switchToRoot() {
+	syscall.Setuid(rootUID)
 }

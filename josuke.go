@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"syscall"
 )
 
 type Josuke struct {
@@ -18,6 +19,7 @@ type Josuke struct {
 }
 
 func New(configFilePath string) (*Josuke, error) {
+	rootUID = syscall.Getuid()
 	file, err := ioutil.ReadFile(configFilePath)
 
 	if err != nil {
@@ -90,14 +92,16 @@ type Action struct {
 	Commands [][]string `json:"commands"`
 }
 
-// Executes the retrived set of commands from config
+// Executes the retrieved set of commands from config
 func (a *Action) execute(i *Info) error {
 	for _, command := range a.Commands {
 		if err := ExecuteCommand(command, i); err != nil {
+			switchToRoot()
 			return err
 		}
 	}
 
+	switchToRoot()
 	return nil
 }
 
