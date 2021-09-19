@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"syscall"
@@ -147,6 +148,9 @@ func ExecuteCommand(c []string, i *Info) error {
 	if len(c) > 1 {
 		args = c[1:]
 	}
+
+	log.Printf("[INFO] executing %+v\n", c)
+
 	if name == "cd" {
 		return chdir(args, i)
 	}
