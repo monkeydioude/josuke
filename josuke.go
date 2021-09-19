@@ -19,7 +19,6 @@ type Josuke struct {
 }
 
 func New(configFilePath string) (*Josuke, error) {
-	rootUID = syscall.Getuid()
 	file, err := ioutil.ReadFile(configFilePath)
 
 	if err != nil {
@@ -55,11 +54,10 @@ type Repository struct {
 
 // Repo is built from github's json payload, mirroring dir data from config, branches & repo name
 type Repo struct {
-	Name     string         `json:"repo"`
-	Branches []Branch       `json:"branches"`
-	BaseDir  string         `json:"base_dir"`
-	ProjDir  string         `json:"proj_dir"`
-	Users    map[string]int `json:"users"`
+	Name     string   `json:"repo"`
+	Branches []Branch `json:"branches"`
+	BaseDir  string   `json:"base_dir"`
+	ProjDir  string   `json:"proj_dir"`
 }
 
 // Matches repo names from payload and config
@@ -72,7 +70,6 @@ type Info struct {
 	BaseDir string
 	ProjDir string
 	HtmlUrl string
-	Users   map[string]int
 }
 
 // Branch mirrors config's branch section, containing branch Name & Actions linked to it
@@ -94,13 +91,14 @@ type Action struct {
 
 // Executes the retrieved set of commands from config
 func (a *Action) execute(i *Info) error {
+	switchToDefaultUser()
 	for _, command := range a.Commands {
 		if err := ExecuteCommand(command, i); err != nil {
 			return err
 		}
 	}
 
-	switchToRoot()
+	switchToDefaultUser()
 	return nil
 }
 
@@ -154,7 +152,7 @@ func ExecuteCommand(c []string, i *Info) error {
 	}
 
 	if yes, user := isSwitchUserCall(name); yes {
-		return switchUser(user, i.Users)
+		return SwitchUser(user)
 	}
 
 	if name == "git" && args[0] == "clone" {
@@ -164,6 +162,8 @@ func ExecuteCommand(c []string, i *Info) error {
 	}
 	args = replaceKeyholders(args, i)
 	cmd := exec.Command(name, args...)
+	cmd.SysProcAttr = &syscall.SysProcAttr{}
+	cmd.SysProcAttr.Credential = &syscall.Credential{Uid: currentUser.Uid, Gid: currentUser.Gid}
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("could not execute command %s %v: %s", name, args, err)
 	}

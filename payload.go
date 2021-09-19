@@ -54,7 +54,6 @@ func (p *Payload) getDeployAction(deployment *[]*Repo) (*Action, *Info) {
 		BaseDir: repo.BaseDir,
 		ProjDir: repo.ProjDir,
 		HtmlUrl: p.Repository.HtmlUrl,
-		Users:   repo.Users,
 	}
 }
 

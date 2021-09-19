@@ -1,13 +1,47 @@
 package josuke
 
 import (
-	"fmt"
 	"log"
+	"os/user"
 	"regexp"
-	"syscall"
+	"strconv"
 )
 
-var rootUID = 0
+type User struct {
+	Uid  uint32
+	Gid  uint32
+	Name string
+}
+
+var currentUser User = User{}
+var defaultUser User = User{}
+
+func GetCurrentUser() User {
+	return currentUser
+}
+
+func init() {
+	user, err := user.Current()
+	if err != nil {
+		panic(err)
+	}
+
+	uid, err := strconv.Atoi(user.Uid)
+	if err != nil {
+		panic(err)
+	}
+
+	gid, err := strconv.Atoi(user.Gid)
+	if err != nil {
+		panic(err)
+	}
+	defaultUser = User{
+		Uid:  uint32(uid),
+		Gid:  uint32(gid),
+		Name: user.Username,
+	}
+	switchToDefaultUser()
+}
 
 func isSwitchUserCall(str string) (bool, string) {
 	regxp, err := regexp.Compile("^%user_(.+)%$")
@@ -24,28 +58,41 @@ func isSwitchUserCall(str string) (bool, string) {
 	return true, res[0][s]
 }
 
-func getUserID(user string, users map[string]int) (int, error) {
-	if user == "root" {
-		return rootUID, nil
+func getUserID(userName string) (*user.User, error) {
+	u, err := user.Lookup(userName)
+
+	if err != nil {
+		return nil, err
 	}
-	if _, ok := users[user]; !ok {
-		return 0, fmt.Errorf("could not find user's ID for user %s", user)
-	}
-	return users[user], nil
+	return u, nil
 }
 
-func switchUser(user string, users map[string]int) error {
-	id, err := getUserID(user, users)
+func SwitchUser(userName string) error {
+	user, err := getUserID(userName)
 
 	if err != nil {
 		return err
 	}
 
-	log.Printf("[INFO] switching to %s uid(%d)\n", user, id)
-	return syscall.Setuid(id)
+	uid, err := strconv.Atoi(user.Uid)
+	if err != nil {
+		return err
+	}
+
+	gid, err := strconv.Atoi(user.Gid)
+	if err != nil {
+		return err
+	}
+
+	log.Printf("[INFO] switching to %+v\n", user)
+	currentUser = User{
+		Uid:  uint32(uid),
+		Gid:  uint32(gid),
+		Name: user.Username,
+	}
+	return nil
 }
 
-func switchToRoot() {
-	log.Printf("[INFO] switching back to root uid(%d)\n", rootUID)
-	syscall.Setuid(rootUID)
+func switchToDefaultUser() {
+	currentUser = defaultUser
 }
