@@ -80,6 +80,8 @@ These **repository rules** objects are defined as such:
 
 ```
 
+**Currently run on Linux systems only***
+
 ### You can use these 3 Keywords at commands level
 - `%base_dir%`: referring to "base_dir" set in config, must be defined by `base_dir` of each `deployment`
 - `%proj_dir%`: referring to "proj_dir" set in config, must be defined by `proj_dir` of each `deployment`
@@ -89,8 +91,7 @@ These **repository rules** objects are defined as such:
 ### Incoming:
 - Tests
 - Docker image for testing/building
-- Makefile for all of this
-- Go1.11 Module compliancy
+- Handle syscall for different OS
 
 _DORA !_
 
