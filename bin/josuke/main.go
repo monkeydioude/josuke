@@ -54,7 +54,6 @@ func main() {
 	} else {
 		protocol = "https"
 		log.Printf("[INFO] Listening %s://%s\n", protocol, p)
-		log.Printf("[INFO] cert [%s] key [%s]\n", j.Cert, j.Key)
 		log.Fatal(http.ListenAndServeTLS(p, j.Cert, j.Key, nil))
 	}
 }

@@ -56,7 +56,7 @@ Add the `cert` and `key` properties.
 
 ```json
 {
-    "…": "…"
+    "…": "…",
     "port": 8082,
     "cert": "conf/cert.pem",
     "key": "conf/key.pem",
