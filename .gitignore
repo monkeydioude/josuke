@@ -1,2 +1,6 @@
 .history/
-bin/josuke/josuke
+/conf/
+/work/
+/bin/josuke/josuke
+*~
+\#*#

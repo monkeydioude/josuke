@@ -44,7 +44,17 @@ func main() {
 		log.Println("[INFO] Gureto daze 8), handling Bitbucket hooks")
 	}
 
-	p := fmt.Sprintf(":%d", j.Port)
-	log.Printf("[INFO] Listening port %s\n", p)
-	log.Fatal(http.ListenAndServe(p, nil))
+	p := fmt.Sprintf("%s:%d", j.Host, j.Port)
+
+	var protocol string
+	if j.Key == "" {
+		protocol = "http"
+		log.Printf("[INFO] Listening %s://%s\n", protocol, p)
+		log.Fatal(http.ListenAndServe(p, nil))
+	} else {
+		protocol = "https"
+		log.Printf("[INFO] Listening %s://%s\n", protocol, p)
+		log.Printf("[INFO] cert [%s] key [%s]\n", j.Cert, j.Key)
+		log.Fatal(http.ListenAndServeTLS(p, j.Cert, j.Key, nil))
+	}
 }
