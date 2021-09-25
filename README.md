@@ -52,8 +52,7 @@ Example of a classic config.json:
 
 #### TLS configuration ####
 
-Add the `cert` and `key` properties.
-
+Add the `cert` and `key` properties inside config's json file, same level as `github_hook`, `bitbucket_hook` etc... 
 ```json
 {
     "…": "…",

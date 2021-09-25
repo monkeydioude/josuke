@@ -15,22 +15,22 @@ type Josuke struct {
 	BitbucketHook string   `json:"bitbucket_hook"`
 	Deployment    *[]*Repo `json:"deployment"`
 	Host          string   `json:"host" default:"localhost"`
-	Port          int      `json:"port" default:8082`
-	Cert          string   `json:"cert" default:""`
-	Key           string   `json:"key"  default:""`
+	Port          int      `json:"port" default:"8082"`
+	Cert          string   `json:"cert"`
+	Key           string   `json:"key"`
 }
 
 func New(configFilePath string) (*Josuke, error) {
 	file, err := ioutil.ReadFile(configFilePath)
 
 	if err != nil {
-		return nil, fmt.Errorf("Could not read config file: %v", err)
+		return nil, fmt.Errorf("could not read config file: %v", err)
 	}
 
 	j := &Josuke{}
 
 	if err := json.Unmarshal(file, j); err != nil {
-		return nil, errors.New("Could not parse json from config file")
+		return nil, errors.New("could not parse json from config file")
 	}
 
 	return j, nil
@@ -140,12 +140,12 @@ func replaceKeyholders(args []string, i *Info) []string {
 // ExecuteCommand execute a command and its args coming in a form of a slice of string, using Info
 func ExecuteCommand(c []string, i *Info) error {
 	if len(c) == 0 {
-		return fmt.Errorf("Empy command slice")
+		return fmt.Errorf("empty command slice")
 	}
 	name := c[0]
 	var args []string
 	if len(c) > 1 {
-		args = c[1:len(c)]
+		args = c[1:]
 	}
 	if name == "cd" {
 		return chdir(args, i)
@@ -159,7 +159,7 @@ func ExecuteCommand(c []string, i *Info) error {
 	args = replaceKeyholders(args, i)
 	cmd := exec.Command(name, args...)
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("Could not execute command %s %v: %s", name, args, err)
+		return fmt.Errorf("could not execute command %s %v: %s", name, args, err)
 	}
 	return nil
 }
