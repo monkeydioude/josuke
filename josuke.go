@@ -16,7 +16,10 @@ type Josuke struct {
 	GithubHook    string   `json:"github_hook"`
 	BitbucketHook string   `json:"bitbucket_hook"`
 	Deployment    *[]*Repo `json:"deployment"`
-	Port          int      `json:"port"`
+	Host          string   `json:"host" default:"localhost"`
+	Port          int      `json:"port" default:"8082"`
+	Cert          string   `json:"cert"`
+	Key           string   `json:"key"`
 }
 
 func New(configFilePath string) (*Josuke, error) {

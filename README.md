@@ -18,6 +18,7 @@ Example of a classic config.json:
 {
     "github_hook": "/josuke/github",
     "bitbucket_hook": "/josuke/bitbucket",
+    "host": "127.0.0.1",
     "port": 8082,
     "deployment":
     [
@@ -48,6 +49,29 @@ Example of a classic config.json:
     ]
 }
 ```
+
+#### TLS configuration ####
+
+Add the `cert` and `key` properties inside config's json file, same level as `github_hook`, `bitbucket_hook` etc... 
+```json
+{
+    "…": "…",
+    "port": 8082,
+    "cert": "conf/cert.pem",
+    "key": "conf/key.pem",
+    "…": "…"
+}
+```
+
+Generate the default certificate and private key with:
+
+```sh
+#!/bin/sh
+openssl req -x509 -newkey rsa:4096 -nodes \
+  -out cert.pem \
+  -keyout key.pem -days 365
+```
+
 ### Keys definition
 - `github_hook`: route Josuke will be receiving Github's payload. **Must be specified in Github Webhooks' parameters**
 - `bitbucket_hook`: route Josuke will be receiving Bitbuckets's payload. **Must be specified in Bitbuckets Webhooks' parameters**
