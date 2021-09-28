@@ -5,20 +5,23 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
-	"path/filepath"
 
 	"github.com/monkeydioude/josuke"
 )
 
-func getCwd() string {
-	ex, err := os.Executable()
-
-	if err != nil {
-		log.Fatal("[ERR ] Could not resolve os.Executable")
+// findOutProtocolHandler defines which handler, with respect to the protocol,
+// should be used, from a josuke.Josuke struct
+func findOutProtocolHandler(j *josuke.Josuke) (string, func() error) {
+	p := fmt.Sprintf("%s:%d", j.Host, j.Port)
+	if j.Key == "" {
+		return "http", func() error {
+			return http.ListenAndServe(p, nil)
+		}
 	}
 
-	return filepath.Dir(ex)
+	return "https", func() error {
+		return http.ListenAndServeTLS(p, j.Cert, j.Key, nil)
+	}
 }
 
 func main() {
@@ -44,7 +47,7 @@ func main() {
 		log.Println("[INFO] Gureto daze 8), handling Bitbucket hooks")
 	}
 
-	p := fmt.Sprintf(":%d", j.Port)
-	log.Printf("[INFO] Listening port %s\n", p)
-	log.Fatal(http.ListenAndServe(p, nil))
+	protocol, handler := findOutProtocolHandler(j)
+	log.Printf("[INFO] Listening %s://%s:%d\n", protocol, j.Host, j.Port)
+	log.Fatal(handler())
 }
