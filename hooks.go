@@ -1,22 +1,51 @@
 package josuke
 
 import (
+	"io"
+	"io/ioutil"
+	"fmt"
 	"log"
 	"net/http"
+	"strings"
 )
+
 
 // GithubRequest handles github's webhook triggers
 func (j *Josuke) GithubRequest(rw http.ResponseWriter, req *http.Request) {
 	log.Printf("[INFO] Caught call from GitHub %+v\n", req.URL)
 	defer req.Body.Close()
 
-	payload, err := fetchPayload(req.Body)
+	buf := new(strings.Builder)
+	_, err := io.Copy(buf, req.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+	s := buf.String()
+
+	bodyReader := ioutil.NopCloser(strings.NewReader(s))
+
+	if j.Debug {
+		log.Println("[DBG ] start body ====")
+		fmt.Println(s)
+		log.Println("[DBG ] end body ====")
+	}
+
+	payload, err := fetchPayload(bodyReader)
 
 	if err != nil {
 		log.Printf("[ERR ] Could not fetch Payload. Reason: %s", err)
 		return
 	}
 
+	githubSignature := req.Header.Get("x-hub-signature-256")
+	if githubSignature == "" {
+		log.Println("[ERR ] x-hub-signature-256 was empty in headers")
+		return
+	} else {
+		log.Printf("[INFO] check signature: %s\n",  githubSignature)
+	}
+
+	
 	githubEvent := req.Header.Get("x-github-event")
 	if githubEvent == "" {
 		log.Println("[ERR ] x-github-event was empty in headers")
