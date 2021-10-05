@@ -22,7 +22,7 @@ func (p *Payload) getBranch(r *Repo) *Branch {
 	return nil
 }
 
-// retrieve repo from config using Paylaod
+// retrieve repo from config using Payload
 func (p *Payload) getRepo(deployment *[]*Repo) *Repo {
 	for _, repo := range *deployment {
 		if repo.matches(p.Repository.Name) {

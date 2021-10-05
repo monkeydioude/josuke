@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 )
@@ -14,6 +15,7 @@ type Josuke struct {
 	Debug         bool     `json:"debug" default:false`
 	GithubHook    string   `json:"github_hook"`
 	BitbucketHook string   `json:"bitbucket_hook"`
+	Hooks         *[]*Hook `json:"hook"`
 	Deployment    *[]*Repo `json:"deployment"`
 	Host          string   `json:"host" default:"localhost"`
 	Port          int      `json:"port" default:"8082"`
@@ -25,13 +27,13 @@ func New(configFilePath string) (*Josuke, error) {
 	file, err := ioutil.ReadFile(configFilePath)
 
 	if err != nil {
-		return nil, fmt.Errorf("Could not read config file: %v", err)
+		return nil, fmt.Errorf("could not read config file: %v", err)
 	}
 
 	j := &Josuke{}
 
 	if err := json.Unmarshal(file, j); err != nil {
-		return nil, errors.New("Could not parse json from config file")
+		return nil, errors.New("could not parse json from config file")
 	}
 
 	return j, nil
@@ -47,6 +49,18 @@ var keyholders = map[string]func(*Info) string{
 	"%html_url%": func(i *Info) string {
 		return i.HtmlUrl
 	},
+}
+
+type Hook struct {
+	Name   string `json:"name"`
+	Type   string `json:"type"`
+	Path   string `json:"path"`
+	Secret string `json:"secret" default:""`
+}
+
+// Matches Hook names from payload and config
+func (h Hook) matches(trial string) bool {
+	return h.Name == trial
 }
 
 // Repository represents the paylaod repository informations
@@ -92,7 +106,7 @@ type Action struct {
 	Commands [][]string `json:"commands"`
 }
 
-// Executes the retrived set of commands from config
+// Executes the retrieved set of commands from config
 func (a *Action) execute(i *Info) error {
 	for _, command := range a.Commands {
 		if err := ExecuteCommand(command, i); err != nil {
@@ -141,13 +155,16 @@ func replaceKeyholders(args []string, i *Info) []string {
 // ExecuteCommand execute a command and its args coming in a form of a slice of string, using Info
 func ExecuteCommand(c []string, i *Info) error {
 	if len(c) == 0 {
-		return fmt.Errorf("Empy command slice")
+		return fmt.Errorf("empty command slice")
 	}
 	name := c[0]
 	var args []string
 	if len(c) > 1 {
-		args = c[1:len(c)]
+		args = c[1:]
 	}
+
+	log.Printf("[INFO] executing %+v\n", c)
+
 	if name == "cd" {
 		return chdir(args, i)
 	}
@@ -160,7 +177,7 @@ func ExecuteCommand(c []string, i *Info) error {
 	args = replaceKeyholders(args, i)
 	cmd := exec.Command(name, args...)
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("Could not execute command %s %v: %s", name, args, err)
+		return fmt.Errorf("could not execute command %s %v: %s", name, args, err)
 	}
 	return nil
 }
