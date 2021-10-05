@@ -16,6 +16,7 @@ type Josuke struct {
 	Debug         bool     `json:"debug" default:false`
 	GithubHook    string   `json:"github_hook"`
 	BitbucketHook string   `json:"bitbucket_hook"`
+	Hooks         *[]*Hook `json:"hook"`
 	Deployment    *[]*Repo `json:"deployment"`
 	Host          string   `json:"host" default:"localhost"`
 	Port          int      `json:"port" default:"8082"`
@@ -49,6 +50,18 @@ var keyholders = map[string]func(*Info) string{
 	"%html_url%": func(i *Info) string {
 		return i.HtmlUrl
 	},
+}
+
+type Hook struct {
+	Name   string `json:"name"`
+	Type   string `json:"type"`
+	Path   string `json:"path"`
+	Secret string `json:"secret" default:""`
+}
+
+// Matches Hook names from payload and config
+func (h Hook) matches(trial string) bool {
+	return h.Name == trial
 }
 
 // Repository represents the paylaod repository informations
