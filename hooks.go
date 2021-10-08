@@ -3,6 +3,7 @@ package josuke
 import (
 	"io"
 	"io/ioutil"
+//    "encoding/hex"
 	"fmt"
 	"log"
 	"net/http"
@@ -11,54 +12,19 @@ import (
 
 // retrieve hook from josuke
 func (j *Josuke) getHook(name string) *Hook {
-	log.Printf("[INFO] hooks count: %s\n", string(len(*j.Hooks)))
 	for _, hook := range *j.Hooks {
-		log.Printf("[INFO] about to loop hook: %s\n", hook.Name)
+		//log.Printf("[INFO] about to loop hook: %s\n", hook.Name)
 		if hook.matches(name) {
 			return hook
 		}
 	}
 	return nil
 }
-/*
-func getHook(hooks *[]*Hook, name string) *Hook {
-	log.Printf("[INFO] about to loop hook\n")
-	for _, hook := range *hooks {
-		log.Printf("[INFO] loop hook: %s\n", hook.Name)
 
-		if hook.matches(name) {
-			return hook
-		}
-	}
-	return nil
-}
-*/
 // GithubRequest handles github's webhook triggers
 func (j *Josuke) GithubRequest(rw http.ResponseWriter, req *http.Request) {
 	log.Printf("[INFO] Caught call from GitHub %+v\n", req.URL)
 	defer req.Body.Close()
-
-	buf := new(strings.Builder)
-	_, err := io.Copy(buf, req.Body)
-	if err != nil {
-		log.Fatal(err)
-	}
-	s := buf.String()
-
-	bodyReader := ioutil.NopCloser(strings.NewReader(s))
-
-	if j.Debug {
-		log.Println("[DBG ] start body ====")
-		fmt.Println(s)
-		log.Println("[DBG ] end body ====")
-	}
-
-	payload, err := fetchPayload(bodyReader)
-
-	if err != nil {
-		log.Printf("[ERR ] Could not fetch Payload. Reason: %s", err)
-		return
-	}
 
 	githubEvent := req.Header.Get("x-github-event")
 	if githubEvent == "" {
@@ -66,13 +32,31 @@ func (j *Josuke) GithubRequest(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	githubSignature := req.Header.Get("x-hub-signature-256")
-	if githubSignature == "" {
+	requestSignature := req.Header.Get("x-hub-signature-256")
+	if requestSignature == "" {
 		log.Println("[ERR ] x-hub-signature-256 was empty in headers")
 		return
 	}
 
-	log.Printf("[INFO] check signature: %s\n",  githubSignature)
+	buf := new(strings.Builder)
+	_, err := io.Copy(buf, req.Body)
+	if err != nil {
+		log.Printf("[ERR ] Could not read Payload. Reason: %s", err)
+		return
+	}
+	s := buf.String()
+
+	if j.Debug {
+		log.Printf("[DBG ] start body %d ====\n", len(s))
+		fmt.Println(s)
+		log.Println("[DBG ] end body ====")
+		//log.Println(hex.EncodeToString([]byte(s)))
+		//log.Println("[DBG ] end body as hex ====")
+	}
+
+	bodyReader := ioutil.NopCloser(strings.NewReader(s))
+
+	//log.Printf("[INFO] check signature: %s\n",  requestSignature)
 	// FIXME : should aleady be present when calling this method.
 	// hardcoded name
 	hook := j.getHook("github")
@@ -81,7 +65,32 @@ func (j *Josuke) GithubRequest(rw http.ResponseWriter, req *http.Request) {
 		log.Println("[ERR ] cannot find hook for secret")
 		return
 	}
-	log.Printf("[INFO] hook secret: %s\n", hook.Secret)
+
+	if hook.SecretBytes == nil {
+//		log.Printf("[INFO] hook secret: %s\n", hook.Secret)
+//		secretBytes, err := hex.DecodeString(hook.Secret)
+//		if err != nil {
+//			log.Printf("[ERR ] cannot decode hex secret: %s\n", err)
+//			return
+//		}
+//		hook.SecretBytes = secretBytes
+		hook.SecretBytes = []byte(hook.Secret)
+	}
+
+	signature := hmacSha256(hook.SecretBytes, s)
+	//log.Printf("[INFO] payload signature: %s\n", signature)
+	// TODO ConstantTimeCompare to not leak information
+	if requestSignature != signature {
+		log.Printf("[ERR ] payload signature does not match:\n  request  %s\n  expected %s\n", requestSignature, signature)
+		return
+	}
+		
+	payload, err := fetchPayload(bodyReader)
+
+	if err != nil {
+		log.Printf("[ERR ] Could not fetch Payload. Reason: %s", err)
+		return
+	}
 
 	payload.Action = githubEvent
 

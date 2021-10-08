@@ -56,6 +56,7 @@ type Hook struct {
 	Type   string `json:"type"`
 	Path   string `json:"path"`
 	Secret string `json:"secret" default:""`
+	SecretBytes []byte
 }
 
 // Matches Hook names from payload and config
