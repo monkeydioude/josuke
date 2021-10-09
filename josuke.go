@@ -13,8 +13,6 @@ import (
 
 type Josuke struct {
 	Debug         bool     `json:"debug" default:false`
-	GithubHook    string   `json:"github_hook"`
-	BitbucketHook string   `json:"bitbucket_hook"`
 	Hooks         *[]*Hook `json:"hook"`
 	Deployment    *[]*Repo `json:"deployment"`
 	Host          string   `json:"host" default:"localhost"`
