@@ -13,13 +13,14 @@ import (
 )
 
 type Josuke struct {
-	Debug         bool     `json:"debug" default:false`
-	Hooks         *[]*Hook `json:"hook"`
-	Deployment    *[]*Repo `json:"deployment"`
-	Host          string   `json:"host" default:"localhost"`
-	Port          int      `json:"port" default:"8082"`
-	Cert          string   `json:"cert"`
-	Key           string   `json:"key"`
+	Debug      bool     `json:"debug" default:false`
+	Hooks      *[]*Hook `json:"hook"`
+	Deployment *[]*Repo `json:"deployment"`
+	Host       string   `json:"host" default:"localhost"`
+	Port       int      `json:"port" default:"8082"`
+	Cert       string   `json:"cert"`
+	Key        string   `json:"key"`
+	Store      string   `json:"store" default:""`
 }
 
 func New(configFilePath string) (*Josuke, error) {
@@ -48,13 +49,16 @@ var keyholders = map[string]func(*Info) string{
 	"%html_url%": func(i *Info) string {
 		return i.HtmlUrl
 	},
+	"%payload%": func(i *Info) string {
+		return i.Payload
+	},
 }
 
 type Hook struct {
-	Name   string `json:"name"`
-	Type   string `json:"type"`
-	Path   string `json:"path"`
-	Secret string `json:"secret" default:""`
+	Name        string `json:"name"`
+	Type        string `json:"type"`
+	Path        string `json:"path"`
+	Secret      string `json:"secret" default:""`
 	SecretBytes []byte
 }
 
@@ -87,6 +91,7 @@ type Info struct {
 	BaseDir string
 	ProjDir string
 	HtmlUrl string
+	Payload string
 }
 
 // Branch mirrors config's branch section, containing branch Name & Actions linked to it
