@@ -44,19 +44,23 @@ func main() {
 			hook.SecretBytes = []byte(hook.Secret)
 		}
 
+		hh := &josuke.HookHandler{}
+		hh.Josuke = j
+		hh.Hook = hook
+
 		if hook.Type == "github" {
-			http.HandleFunc(hook.Path, j.GithubRequest)
+			hh.Handler = hh.GithubRequest
 			log.Println("[INFO] Gureto daze 8), handling Github hooks")
 		} else if hook.Type == "bitbucket" {
-			http.HandleFunc(hook.Path, j.BitbucketRequest)
+			hh.Handler = hh.BitbucketRequest
 			log.Println("[INFO] Gureto daze 8), handling Bitbucket hooks")
 		} else if hook.Type == "gogs" {
-			http.HandleFunc(hook.Path, j.GogsRequest)
+			hh.Handler = hh.GogsRequest
 			log.Println("[INFO] Gureto daze 8), handling Gogs hooks")
-
 		} else {
 			log.Fatal(fmt.Sprintf("[ERR ] Oh, My, God ! Josuke does not know this type of hook: %s. See README.md for help", hook.Type))
 		}
+		http.HandleFunc(hook.Path, hh.Handler)
 	}
 
 	protocol, handler := findOutProtocolHandler(j)

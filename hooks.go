@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"math/rand"
 	"strings"
+//	"time"
 )
 
 // retrieve hook from josuke
@@ -39,14 +41,29 @@ func getBody(reader io.Reader, debug bool) (string, error) {
 	return s, nil
 }
 
-func (j *Josuke) GenericRequest(
+func randomString(len int) string {
+	bytes := make([]byte, len)
+	for i := 0; i < len; i++ {
+		bytes[i] = byte(65 + rand.Intn(25))  //A=65 and Z = 65+25
+	}
+	return string(bytes)
+}
+
+// Contains the hook and the HTTP response handler.
+type HookHandler struct {
+	Josuke *Josuke
+	Hook *Hook
+	Handler func(http.ResponseWriter, *http.Request)
+}
+
+// Checks request HMAC 256 from a HTTP header and runs the action.
+func (hh *HookHandler) GenericRequest(
 	rw http.ResponseWriter,
 	req *http.Request,
-	scmType string,
 	eventHeaderName string,
 	signatureHeaderName string) {
 
-	log.Printf("[INFO] Caught call from %s %+v\n", scmType, req.URL)
+	log.Printf("[INFO] Caught call from %s %+v\n", hh.Hook.Type, req.URL)
 	defer req.Body.Close()
 
 	scmEvent := req.Header.Get(eventHeaderName)
@@ -55,29 +72,22 @@ func (j *Josuke) GenericRequest(
 		return
 	}
 
-	hook := j.getHook(scmType)
-
-	if hook == nil {
-		log.Println("[ERR ] cannot find hook for secret")
-		return
-	}
-
-	s, err := getBody(req.Body, j.Debug)
+	s, err := getBody(req.Body, hh.Josuke.Debug)
 	if err != nil {
 		log.Printf("[ERR ] Could not read body. Reason: %s", err)
 		return
 	}
 
-	if hook.SecretBytes != nil {
+	if hh.Hook.SecretBytes != nil {
 		requestSignature := req.Header.Get(signatureHeaderName)
 		if requestSignature == "" {
 			log.Printf("[ERR ] %s was empty in headers\n", signatureHeaderName)
 			return
 		}
 
-		signature := hmacSha256(hook.SecretBytes, s)
+		signature := hmacSha256(hh.Hook.SecretBytes, s)
 		//log.Printf("[INFO] payload signature: %s\n", signature)
-		// TODO ConstantTimeCompare to not leak information
+		// TODO use ConstantTimeCompare to avoid leaking information.
 		if requestSignature != signature {
 			log.Printf("[ERR ] payload signature does not match:\n  request  %s\n  expected %s\n", requestSignature, signature)
 			return
@@ -85,6 +95,11 @@ func (j *Josuke) GenericRequest(
 	}
 
 	bodyReader := ioutil.NopCloser(strings.NewReader(s))
+	
+	if hh.Josuke.Store != "" {
+		payloadPath := hh.Josuke.Store + "/" + randomString(6) + ".json"
+		log.Printf("[INFO] store payload to %s\n", payloadPath)
+	}
 
 	payload, err := fetchPayload(bodyReader)
 
@@ -95,7 +110,8 @@ func (j *Josuke) GenericRequest(
 
 	payload.Action = scmEvent
 
-	action, info := payload.getDeployAction(j.Deployment)
+	action, info := payload.getDeployAction(hh.Josuke.Deployment)
+	info.Payload = ""
 	if action == nil {
 		log.Println("[ERR ] Could not retrieve any action")
 		return
@@ -107,35 +123,33 @@ func (j *Josuke) GenericRequest(
 }
 
 // GogsRequest handles gogs' webhook triggers
-func (j *Josuke) GogsRequest(rw http.ResponseWriter, req *http.Request) {
+func (hh *HookHandler) GogsRequest(rw http.ResponseWriter, req *http.Request) {
 
-	scmType := "gogs"
 	// X-Gogs-Delivery
 	eventHeaderName := "x-gogs-event"
 	signatureHeaderName := "x-gogs-signature"
 
-	j.GenericRequest(rw, req, scmType, eventHeaderName, signatureHeaderName)
+	hh.GenericRequest(rw, req, eventHeaderName, signatureHeaderName)
 }
 
 // GithubRequest handles github's webhook triggers
-func (j *Josuke) GithubRequest(rw http.ResponseWriter, req *http.Request) {
+func (hh *HookHandler) GithubRequest(rw http.ResponseWriter, req *http.Request) {
 
-	scmType := "github"
 	eventHeaderName := "x-github-event"
 	// Could be x-hub-signature for older servers.
 	signatureHeaderName := "x-hub-signature-256"
 
-	j.GenericRequest(rw, req, scmType, eventHeaderName, signatureHeaderName)
+	hh.GenericRequest(rw, req, eventHeaderName, signatureHeaderName)
 }
 
 // BitbucketRequest handles github's webhook triggers
-func (j *Josuke) BitbucketRequest(rw http.ResponseWriter, req *http.Request) {
+func (hh *HookHandler) BitbucketRequest(rw http.ResponseWriter, req *http.Request) {
 	log.Printf("[INFO] Caught call from BitBucket %+v\n", req.URL)
 	payload := bitbucketToPayload(req.Body)
 
 	defer req.Body.Close()
 
-	action, info := payload.getDeployAction(j.Deployment)
+	action, info := payload.getDeployAction(hh.Josuke.Deployment)
 	if action == nil {
 		log.Println("[ERR ] Could not retrieve any action")
 		return

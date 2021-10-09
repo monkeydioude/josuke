@@ -19,6 +19,7 @@ type Josuke struct {
 	Port          int      `json:"port" default:"8082"`
 	Cert          string   `json:"cert"`
 	Key           string   `json:"key"`
+	Store         string   `json:"store" default:""`
 }
 
 func New(configFilePath string) (*Josuke, error) {
@@ -46,6 +47,9 @@ var keyholders = map[string]func(*Info) string{
 	},
 	"%html_url%": func(i *Info) string {
 		return i.HtmlUrl
+	},
+	"%payload%": func(i *Info) string {
+		return i.Payload
 	},
 }
 
@@ -86,6 +90,7 @@ type Info struct {
 	BaseDir string
 	ProjDir string
 	HtmlUrl string
+	Payload string
 }
 
 // Branch mirrors config's branch section, containing branch Name & Actions linked to it
@@ -112,7 +117,6 @@ func (a *Action) execute(i *Info) error {
 			return err
 		}
 	}
-
 	return nil
 }
 
