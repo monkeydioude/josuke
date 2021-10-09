@@ -31,20 +31,32 @@ func main() {
 	j, err := josuke.New(*configFileName)
 
 	if err != nil {
-		log.Printf("[ERR ] %s", err)
+		log.Fatal("[ERR ] %s", err)
 	}
 
-	if j.BitbucketHook == "" && j.GithubHook == "" {
-		log.Println("[ERR ] MUDA MUDA MUDA ! Josuke needs to handle at least one type of hook. See README.md for help")
+	if *j.Hooks == nil || len(*j.Hooks) == 0 {
+		log.Fatal("[ERR ] MUDA MUDA MUDA ! Josuke needs to handle at least one type of hook. See README.md for help")
 	}
 
-	if j.GithubHook != "" {
-		http.HandleFunc(j.GithubHook, j.GithubRequest)
-		log.Println("[INFO] Gureto daze 8), handling Github hooks")
-	}
-	if j.BitbucketHook != "" {
-		http.HandleFunc(j.BitbucketHook, j.BitbucketRequest)
-		log.Println("[INFO] Gureto daze 8), handling Bitbucket hooks")
+	for _, hook := range *j.Hooks {
+		//log.Printf("[INFO] add hook %s: %s\n", hook.Name, hook.Path)
+		if hook.Secret != "" && hook.SecretBytes == nil {
+			hook.SecretBytes = []byte(hook.Secret)
+		}
+
+		if hook.Type == "github" {
+			http.HandleFunc(hook.Path, j.GithubRequest)
+			log.Println("[INFO] Gureto daze 8), handling Github hooks")
+		} else if hook.Type == "bitbucket" {
+			http.HandleFunc(hook.Path, j.BitbucketRequest)
+			log.Println("[INFO] Gureto daze 8), handling Bitbucket hooks")
+		} else if hook.Type == "gogs" {
+			http.HandleFunc(hook.Path, j.GogsRequest)
+			log.Println("[INFO] Gureto daze 8), handling Gogs hooks")
+
+		} else {
+			log.Fatal(fmt.Sprintf("[ERR ] Oh, My, God ! Josuke does not know this type of hook: %s. See README.md for help", hook.Type))
+		}
 	}
 
 	protocol, handler := findOutProtocolHandler(j)
