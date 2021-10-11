@@ -16,10 +16,35 @@ Example of a classic config.json:
 
 ```json
 {
-    "github_hook": "/josuke/github",
-    "bitbucket_hook": "/josuke/bitbucket",
+    "debug": false,
     "host": "127.0.0.1",
     "port": 8082,
+    "store": "{directory to store payload, optional)",
+    "hook": [
+        {
+            "name": "gogs",
+            "type": "gogs",
+            "path": "/josuke/gogs",
+            "secret": "7YiuiG8dM1lSh5IzdrVK5XCQcBbRFMvwh5CB4b90"
+        },
+        {
+            "name": "private-gogs",
+            "type": "gogs",
+            "path": "/josuke/private-gogs",
+            "secret": "0061Gki75ieIEWaQ8y8SlGpUhGpx0HEfdF3D61Tz"
+        },
+        {
+            "name": "github",
+            "type": "github",
+            "path": "/josuke/github",
+            "secret": "wd51QvLFIG3VFim5TmltV2xB40YCWwfJmnmxo9pp"
+        },
+        {
+            "name": "bitbucket",
+            "type": "bitbucket",
+            "path": "/josuke/bitbucket"
+        }
+    ],
     "deployment":
     [
         {
@@ -35,6 +60,7 @@ Example of a classic config.json:
                         {
                             "action": "push",
                             "commands": [
+                                ["echo", "payload written to: ", "%payload_path%"],
                                 ["cd", "%base_dir%"],
                                 ["git", "clone", "%html_url%"],
                                 ["cd", "%proj_dir%"],
@@ -73,12 +99,29 @@ openssl req -x509 -newkey rsa:4096 -nodes \
 ```
 
 ### Keys definition
-- `github_hook`: route Josuke will be receiving Github's payload. **Must be specified in Github Webhooks' parameters**
-- `bitbucket_hook`: route Josuke will be receiving Bitbuckets's payload. **Must be specified in Bitbuckets Webhooks' parameters**
-- `port`: port Josuke will listen to
+
+- `debug`: prints additional information if `true`.
+- `host`: binds the server to local address. Defaults to localhost.
+- `port`: port Josuke will listen to. Defaults to 8082.
+- `store`: directory, optional. If present, every valid payload is written in this directory with a dynamic name: `{hook.name}.{timestamp}.{random string}.json`. The local path to this file is available to commands with the placeholder `%payload_path%`.
+- `hook`: array of objects defining SCM hooks for Gogs, GitHub and BitBucket.
 - `deployment`: array of objects defining deployments **repository rules** Josuke should follow.
 
-These **repository rules** objects are defined as such:
+#### Hook Definition ####
+
+- `name` : logical name, used in the payload local file name if enabled.
+- `type`: SCM type, currently "gogs", "github" or "bitbucket".
+- `path`: local web path. This path must be specified in SCM Webhooks' parameters.
+- `secret`: signs the payload for Gogs and Github. *Optional, but strongly recommended for security purpose.* If not set, anybody can fake a payload on your webhook endpoint.
+
+There are three types of hooks:
+- `gogs`
+- `github`
+- `bitbucket`
+
+#### Repository rules ####
+
+The **repository rules** objects are defined as such:
 - `repo`: name of your repository in the repository universe. No need to specify the whole **only the username and repository name is required** (ex: monkeydioude/josuke)
 - `branches`: is an array of objects defining the **branche behavior** towards specified branches.
 - `base_dir`: **OPTIONAL** Allow you to set what should be a base directory usable at **commands definition** level (ex: /var/projects/sources)
@@ -104,16 +147,20 @@ These **repository rules** objects are defined as such:
 
 ```
 
-**Currently run on Linux systems only***
+**Currently run on Linux systems only**
 
-### You can use these 3 Keywords at commands level
+### You can use these 4 Keywords at commands level
 - `%base_dir%`: referring to "base_dir" set in config, must be defined by `base_dir` of each `deployment`
 - `%proj_dir%`: referring to "proj_dir" set in config, must be defined by `proj_dir` of each `deployment`
 - `%html_url%`: retrieved from github/bitbucket's payload informations, html url of your repo
+- `%payload_path%`: path to the payload, available if enabled with `store` in the configuration.
 
+### Tests ###
+
+See [testdata/](testdata/index.md).
 
 ### Incoming:
-- Tests
+
 - Docker image for testing/building
 - Handle syscall for different OS
 
