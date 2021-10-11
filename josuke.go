@@ -48,8 +48,8 @@ var keyholders = map[string]func(*Info) string{
 	"%html_url%": func(i *Info) string {
 		return i.HtmlUrl
 	},
-	"%payload%": func(i *Info) string {
-		return i.Payload
+	"%payload_path%": func(i *Info) string {
+		return i.PayloadPath
 	},
 }
 
@@ -87,10 +87,10 @@ func (r Repo) matches(trial string) bool {
 
 // Info contains various data about directory to deploy to and git's repo url
 type Info struct {
-	BaseDir string
-	ProjDir string
-	HtmlUrl string
-	Payload string
+	BaseDir     string
+	ProjDir     string
+	HtmlUrl     string
+	PayloadPath string
 }
 
 // Branch mirrors config's branch section, containing branch Name & Actions linked to it
@@ -138,8 +138,7 @@ func fetchPayload(r io.Reader) (*Payload, error) {
 	return payload, nil
 }
 
-func chdir(args []string, i *Info) error {
-	args = replaceKeyholders(args, i)
+func chdir(args []string) error {
 	if err := os.Chdir(args[0]); err != nil {
 		return fmt.Errorf("%s on \"%s\" directory", err.Error(), args[0])
 	}
@@ -161,15 +160,14 @@ func ExecuteCommand(c []string, i *Info) error {
 		return fmt.Errorf("empty command slice")
 	}
 	name := c[0]
-	var args []string
-	if len(c) > 1 {
-		args = c[1:]
-	}
+	args := make([]string, len(c) - 1)
+	copy(args, c[1:])
+	args = replaceKeyholders(args, i)
 
-	log.Printf("[INFO] executing %+v\n", c)
+	log.Printf("[INFO] executing %s %+v\n", name, args)
 
 	if name == "cd" {
-		return chdir(args, i)
+		return chdir(args)
 	}
 
 	if name == "git" && args[0] == "clone" {
@@ -177,7 +175,6 @@ func ExecuteCommand(c []string, i *Info) error {
 			return nil
 		}
 	}
-	args = replaceKeyholders(args, i)
 	cmd := exec.Command(name, args...)
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("could not execute command %s %v: %s", name, args, err)

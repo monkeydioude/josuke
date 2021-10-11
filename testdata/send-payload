@@ -1,0 +1,64 @@
+#!/bin/sh
+set -e
+
+# Requires jq https://stedolan.github.io/jq/
+jqExe='jq'
+#jqExe='/p/dev/app/jq/jq-1.6-win32.exe'
+dbg='false'
+dbg='true'
+
+thisDir=$(dirname "$0")
+
+serverConf="$thisDir/test2.config.json"
+
+# read values from the server configuration
+getServerUrlFromConf() {
+	port=$("$jqExe" -r 'if null == .port then empty else .port end' "$1")
+	port="${port:-8082}"
+	host=$("$jqExe" -r 'if null == .host then empty else .host end' "$1")
+	host="${host:-127.0.0.1}"
+	cert=$("$jqExe" -r 'if null == .cert then empty else .cert end' "$1")
+	if test -z "$cert"; then
+		protocol='http'
+	else
+		protocol='https'
+	fi
+	printf '%s' "$protocol://$host:$port"
+}
+
+# - JSON file
+# - hook name
+getSecretFromConf() {
+	"$jqExe" -r --arg hookName "$2" '
+	if null == .hook then empty else (.hook[] | select(.name == $hookName) | .secret) end' "$1"
+}
+
+serverUrl=$(getServerUrlFromConf "$serverConf")
+#serverUrl='http://127.0.0.1:8082'
+hookName='github'
+hookSecret=$(getSecretFromConf "$serverConf" "$hookName")
+
+if $dbg; then {
+	printf '#  server url     %s\n' "$serverUrl"
+	printf '#  hook name      %s\n' "$hookName"
+	printf '#  hook secret    %s\n' "$hookSecret"
+}>&2; fi
+
+# - payload file
+# - secret
+signData() {
+	openssl dgst -sha256 -hmac "$2" "$1" | sed -E 's/^.[^=]+= (.+)$/\1/g'
+}
+
+payloadFile="$thisDir/commit-payload.json"
+payload="$(cat "$payloadFile")"
+signature=$(signData "$payloadFile" "$hookSecret")
+
+if $dbg; then {
+	printf '#  signature      %s\n' "$signature"
+}>&2; fi
+
+curl -H 'x-github-event: push' "$serverUrl/josuke/github" \
+  -H 'Content-Type: application/json' \
+  -H "X-Hub-Signature-256: $signature" \
+  --data-raw "$payload"
