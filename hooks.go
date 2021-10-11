@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"math/rand"
 	"strings"
-//	"time"
+	"time"
 )
 
 // retrieve hook from josuke
@@ -72,7 +72,7 @@ func (hh *HookHandler) GenericRequest(
 		return
 	}
 
-	s, err := getBody(req.Body, hh.Josuke.Debug)
+	payloadContent, err := getBody(req.Body, hh.Josuke.Debug)
 	if err != nil {
 		log.Printf("[ERR ] Could not read body. Reason: %s", err)
 		return
@@ -85,7 +85,7 @@ func (hh *HookHandler) GenericRequest(
 			return
 		}
 
-		signature := hmacSha256(hh.Hook.SecretBytes, s)
+		signature := hmacSha256(hh.Hook.SecretBytes, payloadContent)
 		//log.Printf("[INFO] payload signature: %s\n", signature)
 		// TODO use ConstantTimeCompare to avoid leaking information.
 		if requestSignature != signature {
@@ -94,11 +94,24 @@ func (hh *HookHandler) GenericRequest(
 		}
 	}
 
-	bodyReader := ioutil.NopCloser(strings.NewReader(s))
-	
+	bodyReader := ioutil.NopCloser(strings.NewReader(payloadContent))
+
+	var payloadPath string
 	if hh.Josuke.Store != "" {
-		payloadPath := hh.Josuke.Store + "/" + randomString(6) + ".json"
+
+		t := time.Now().UTC()
+		//buf := []rune(t.Format(time.RFC3339))
+		dt := strings.ReplaceAll(t.Format(time.RFC3339), ":", "")
+		//strings.Replace(
+		payloadPath = hh.Josuke.Store + "/" + hh.Hook.Name + "." + dt + "." + randomString(6) + ".json"
+		err = ioutil.WriteFile(payloadPath, []byte(payloadContent), 0664)
+		if err != nil {
+			log.Printf("[ERR ] cannot create the payload file: %s", err)
+			return
+		}
 		log.Printf("[INFO] store payload to %s\n", payloadPath)
+	} else {
+		payloadPath = ""
 	}
 
 	payload, err := fetchPayload(bodyReader)
@@ -110,8 +123,8 @@ func (hh *HookHandler) GenericRequest(
 
 	payload.Action = scmEvent
 
-	action, info := payload.getDeployAction(hh.Josuke.Deployment)
-	info.Payload = ""
+	action, info := payload.getDeployAction(hh.Josuke.Deployment, payloadPath)
+
 	if action == nil {
 		log.Println("[ERR ] Could not retrieve any action")
 		return
@@ -149,7 +162,9 @@ func (hh *HookHandler) BitbucketRequest(rw http.ResponseWriter, req *http.Reques
 
 	defer req.Body.Close()
 
-	action, info := payload.getDeployAction(hh.Josuke.Deployment)
+	// TODO : implement payload path for BitbucketRequest
+	payloadPath := ""
+	action, info := payload.getDeployAction(hh.Josuke.Deployment, payloadPath)
 	if action == nil {
 		log.Println("[ERR ] Could not retrieve any action")
 		return
