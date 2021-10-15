@@ -1,0 +1,25 @@
+#!/bin/sh
+set -e
+
+thisDir=$(dirname "$(realpath "$0")")
+
+# Set the conf path
+conf="$thisDir/test2.config.json"
+
+sendExe="$thisDir/send-payload"
+
+hookName="$1"
+if test -z "$hookName"; then
+	hookName='bitbucket'
+	#hookName='githubounette'
+	#hookName='githubounet'
+	hookName='gogs'
+	hookName='github'
+fi
+
+case "$hookName" in 
+	gogs) payloadFile="$thisDir/gogs-push.json";;
+	*) payloadFile="$thisDir/commit-payload.json";;
+esac
+
+"$sendExe" "$conf" "$hookName" "$payloadFile" "$@"

@@ -32,6 +32,11 @@ Example of a classic config.json:
             "type": "gogs",
             "path": "/josuke/private-gogs",
             "secret": "0061Gki75ieIEWaQ8y8SlGpUhGpx0HEfdF3D61Tz"
+            "command": [
+                "C:/Users/oparent/AppData/Local/Programs/Git/bin/sh.exe",
+                "C:/Users/oparent/pxd/work/josuke/script/hook",
+                "%payload_path%"
+            ]
         },
         {
             "name": "github",
@@ -78,7 +83,7 @@ Example of a classic config.json:
 
 #### TLS configuration ####
 
-Add the `cert` and `key` properties inside config's json file, same level as `github_hook`, `bitbucket_hook` etc... 
+Add the `cert` and `key` properties inside config's json file, same level as `host`, `port`. 
 ```json
 {
     "…": "…",
@@ -111,13 +116,26 @@ openssl req -x509 -newkey rsa:4096 -nodes \
 
 - `name` : logical name, used in the payload local file name if enabled.
 - `type`: SCM type, currently "gogs", "github" or "bitbucket".
-- `path`: local web path. This path must be specified in SCM Webhooks' parameters.
+- `path`: local web path. This path must be specified in the SCM webhook’s parameters.
 - `secret`: signs the payload for Gogs and Github. *Optional, but strongly recommended for security purpose.* If not set, anybody can fake a payload on your webhook endpoint.
+- `command`: optional command, takes precedence over the deployment commands if set. It is run at each valid request. *Only the `%payload_path%` placeholder is available in this hook scope.*  
 
 There are three types of hooks:
 - `gogs`
 - `github`
 - `bitbucket`
+
+##### Command samples #####
+
+Run a shell script `C:/Users/me/josuke/script/hook` with the payload path as a parameter on Windows. It uses the shell that comes with Git Bash:
+
+```json
+"command": [
+	"C:/Users/me/AppData/Local/Programs/Git/bin/sh.exe",
+	"C:/Users/me/josuke/script/hook",
+	"%payload_path%"
+]
+```
 
 #### Repository rules ####
 
@@ -146,14 +164,14 @@ The **repository rules** objects are defined as such:
     ]
 
 ```
-
 **Currently run on Linux systems only**
 
-### You can use these 4 Keywords at commands level
+### You can use these 4 placeholders at commands level
+
 - `%base_dir%`: referring to "base_dir" set in config, must be defined by `base_dir` of each `deployment`
 - `%proj_dir%`: referring to "proj_dir" set in config, must be defined by `proj_dir` of each `deployment`
-- `%html_url%`: retrieved from github/bitbucket's payload informations, html url of your repo
-- `%payload_path%`: path to the payload, available if enabled with `store` in the configuration.
+- `%html_url%`: retrieved from gogs/github/bitbucket's payload informations, html url of your repo
+- `%payload_path%`: path to the payload, available if enabled with `store` in the configuration. Otherwise, empty.
 
 ### Tests ###
 

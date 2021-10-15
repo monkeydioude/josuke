@@ -3,7 +3,6 @@ package josuke
 import (
 	"io"
 	"io/ioutil"
-//    "encoding/hex"
 	"fmt"
 	"log"
 	"net/http"
@@ -15,7 +14,6 @@ import (
 // retrieve hook from josuke
 func (j *Josuke) getHook(name string) *Hook {
 	for _, hook := range *j.Hooks {
-		//log.Printf("[INFO] about to loop hook: %s\n", hook.Name)
 		if hook.matches(name) {
 			return hook
 		}
@@ -100,9 +98,7 @@ func (hh *HookHandler) GenericRequest(
 	if hh.Josuke.Store != "" {
 
 		t := time.Now().UTC()
-		//buf := []rune(t.Format(time.RFC3339))
 		dt := strings.ReplaceAll(t.Format(time.RFC3339), ":", "")
-		//strings.Replace(
 		payloadPath = hh.Josuke.Store + "/" + hh.Hook.Name + "." + dt + "." + randomString(6) + ".json"
 		err = ioutil.WriteFile(payloadPath, []byte(payloadContent), 0664)
 		if err != nil {
@@ -123,8 +119,7 @@ func (hh *HookHandler) GenericRequest(
 
 	payload.Action = scmEvent
 
-	action, info := payload.getDeployAction(hh.Josuke.Deployment, payloadPath)
-
+	action, info := hh.getHookAction(payload, payloadPath)
 	if action == nil {
 		log.Println("[ERR ] Could not retrieve any action")
 		return
@@ -132,6 +127,26 @@ func (hh *HookHandler) GenericRequest(
 
 	if err := action.execute(info); err != nil {
 		log.Printf("[ERR ] Could not execute action. Reason: %s", err)
+	}
+}
+
+// Returns either the hook command if present, or a deployment command.
+func (hh *HookHandler) getHookAction(payload *Payload, payloadPath string) (*Action, *Info) {
+	if hh.Hook.Command == nil || len(hh.Hook.Command) == 0 {
+		//log.Println("[INFO] hook action: deployment")
+		return payload.getDeployAction(hh.Josuke.Deployment, payloadPath)
+	}
+
+	//log.Println("[INFO] hook action ")
+
+	return &Action{
+		Action: "hook",
+		Commands: [][]string{hh.Hook.Command},
+	}, &Info{
+		BaseDir: "",
+		ProjDir: "",
+		HtmlUrl: "",
+		PayloadPath: payloadPath,
 	}
 }
 
