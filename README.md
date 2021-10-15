@@ -28,8 +28,7 @@ Example of a classic config.json:
             "path": "/josuke/private-gogs",
             "secret": "0061Gki75ieIEWaQ8y8SlGpUhGpx0HEfdF3D61Tz",
             "command": [
-                "C:/Users/oparent/AppData/Local/Programs/Git/bin/sh.exe",
-                "C:/Users/oparent/pxd/work/josuke/script/hook",
+                "/home/mkd/Work/josuke/script/hook",
                 "%payload_path%"
             ]
         },
