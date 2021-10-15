@@ -60,6 +60,9 @@ func main() {
 		} else {
 			log.Fatal(fmt.Sprintf("[ERR ] Oh, My, God ! Josuke does not know this type of hook: %s. See README.md for help", hook.Type))
 		}
+		if hh.Josuke.Debug && nil != hh.Hook.Command && 0 > len(hh.Hook.Command) {
+			log.Println("[INFO] hook command: ", hh.Hook.Command)
+		}
 		http.HandleFunc(hook.Path, hh.Handler)
 	}
 

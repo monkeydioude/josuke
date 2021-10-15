@@ -59,6 +59,9 @@ type Hook struct {
 	Path   string `json:"path"`
 	Secret string `json:"secret" default:""`
 	SecretBytes []byte
+	// Optional command, takes precedence over deployment commands if set.
+	// Only %payload_path% placeholder is available.
+	Command []string `json:"command" default:[]`
 }
 
 // Matches Hook names from payload and config

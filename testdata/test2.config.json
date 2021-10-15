@@ -10,7 +10,16 @@
             "name": "gogs",
             "type": "gogs",
             "path": "/josuke/gogs",
-            "secret": "a1031c7efdea95bce520fda9feff5ec3"
+            "secret": "a1031c7efdea95bce520fda9feff5ec3",
+            "command": [
+                "/home/mkd/Work/josuke/script/hook",
+                "%payload_path%"
+            ],
+            "#command": [
+                "C:/Users/mkd/AppData/Local/Programs/Git/bin/sh.exe",
+                "C:/Users/mkd/pxd/work/josuke/script/hook",
+                "%payload_path%"
+            ]
         },
         {
             "name": "github",
