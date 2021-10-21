@@ -1,5 +1,5 @@
 {
-    "debug": true,
+    "logLevel": "DEBUG",
     "host": "192.168.0.18",
     "port": 8082,
     "#key": "key.pem",

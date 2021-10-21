@@ -9,10 +9,37 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"strings"
 )
 
+// Defines a log level
+type LogLevel int
+
+// Available log levels
+const (
+	TraceLevel LogLevel = iota
+	DebugLevel
+	InfoLevel
+	WarnLevel
+	ErrorLevel
+)
+
+var name2logLevel = map[string]LogLevel{
+	"TRACE": TraceLevel,
+	"DEBUG": DebugLevel,
+	"INFO":  InfoLevel,
+	"WARN":  WarnLevel,
+	"ERROR": ErrorLevel,
+}
+
+func parseLogLevel(value string) (LogLevel, bool) {
+    c, ok := name2logLevel[strings.ToUpper(value)]
+    return c, ok
+}
+
 type Josuke struct {
-	Debug         bool     `json:"debug" default:false`
+	LogLevelName  string   `json:"logLevel" default:"INFO"`
+	LogLevel      LogLevel
 	Hooks         *[]*Hook `json:"hook"`
 	Deployment    *[]*Repo `json:"deployment"`
 	Host          string   `json:"host" default:"localhost"`
@@ -35,7 +62,18 @@ func New(configFilePath string) (*Josuke, error) {
 		return nil, errors.New("could not parse json from config file")
 	}
 
+
+	logLevel, ok := parseLogLevel(j.LogLevelName)
+	if ! ok {
+		return nil, fmt.Errorf("could not parse the log level: %s", j.LogLevelName)
+	}
+	j.LogLevel = logLevel
+
 	return j, nil
+}
+
+func (j *Josuke) LogEnabled(ll LogLevel) bool {
+	return 	j.LogLevel <= ll
 }
 
 var keyholders = map[string]func(*Info) string{
@@ -54,10 +92,10 @@ var keyholders = map[string]func(*Info) string{
 }
 
 type Hook struct {
-	Name   string `json:"name"`
-	Type   string `json:"type"`
-	Path   string `json:"path"`
-	Secret string `json:"secret" default:""`
+	Name        string `json:"name"`
+	Type        string `json:"type"`
+	Path        string `json:"path"`
+	Secret      string `json:"secret" default:""`
 	SecretBytes []byte
 	// Optional command, takes precedence over deployment commands if set.
 	// Only %payload_path% placeholder is available.
@@ -115,11 +153,14 @@ type Action struct {
 
 // Executes the retrieved set of commands from config
 func (a *Action) execute(i *Info) error {
+	switchToDefaultUser()
 	for _, command := range a.Commands {
 		if err := ExecuteCommand(command, i); err != nil {
 			return err
 		}
 	}
+
+	switchToDefaultUser()
 	return nil
 }
 
@@ -171,6 +212,10 @@ func ExecuteCommand(c []string, i *Info) error {
 
 	if name == "cd" {
 		return chdir(args)
+	}
+
+	if yes, user := isSwitchUserCall(name); yes {
+		return SwitchUser(user)
 	}
 
 	if name == "git" && args[0] == "clone" {

@@ -4,12 +4,20 @@ import (
 	"io"
 	"io/ioutil"
 	"fmt"
+	"encoding/hex"
 	"log"
 	"net/http"
 	"math/rand"
 	"strings"
 	"time"
 )
+
+// Defines a Source Code Management (Gogs, GitHub, BitBucket).
+type Scm struct {
+	Name   string
+	Title  string
+	Handler func(http.ResponseWriter, *http.Request)
+}
 
 // retrieve hook from josuke
 func (j *Josuke) getHook(name string) *Hook {
@@ -21,7 +29,7 @@ func (j *Josuke) getHook(name string) *Hook {
 	return nil
 }
 
-func getBody(reader io.Reader, debug bool) (string, error) {
+func getBody(reader io.Reader, logLevel LogLevel) (string, error) {
 	buf := new(strings.Builder)
 	_, err := io.Copy(buf, reader)
 	if err != nil {
@@ -29,12 +37,15 @@ func getBody(reader io.Reader, debug bool) (string, error) {
 	}
 	s := buf.String()
 
-	if debug {
+	if logLevel <= DebugLevel {
 		log.Printf("[DBG ] start body %d ====\n", len(s))
 		fmt.Println(s)
 		log.Println("[DBG ] end body ====")
-		//log.Println(hex.EncodeToString([]byte(s)))
-		//log.Println("[DBG ] end body as hex ====")
+		if logLevel <= TraceLevel {
+			log.Println("[VRBS] start body as hex ====")
+			log.Println(hex.EncodeToString([]byte(s)))
+			log.Println("[VRBS] end body as hex ====")
+		}
 	}
 	return s, nil
 }
@@ -42,7 +53,7 @@ func getBody(reader io.Reader, debug bool) (string, error) {
 func randomString(len int) string {
 	bytes := make([]byte, len)
 	for i := 0; i < len; i++ {
-		bytes[i] = byte(65 + rand.Intn(25))  //A=65 and Z = 65+25
+		bytes[i] = byte(65 + rand.Intn(25)) //A=65 and Z = 65+25
 	}
 	return string(bytes)
 }
@@ -70,7 +81,7 @@ func (hh *HookHandler) GenericRequest(
 		return
 	}
 
-	payloadContent, err := getBody(req.Body, hh.Josuke.Debug)
+	payloadContent, err := getBody(req.Body, hh.Josuke.LogLevel)
 	if err != nil {
 		log.Printf("[ERR ] Could not read body. Reason: %s", err)
 		return
@@ -84,7 +95,9 @@ func (hh *HookHandler) GenericRequest(
 		}
 
 		signature := hmacSha256(hh.Hook.SecretBytes, payloadContent)
-		//log.Printf("[INFO] payload signature: %s\n", signature)
+		if hh.Josuke.LogEnabled(TraceLevel) {
+			log.Printf("[TRAC] payload signature: %s\n", signature)
+		}
 		// TODO use ConstantTimeCompare to avoid leaking information.
 		if requestSignature != signature {
 			log.Printf("[ERR ] payload signature does not match:\n  request  %s\n  expected %s\n", requestSignature, signature)
@@ -133,11 +146,15 @@ func (hh *HookHandler) GenericRequest(
 // Returns either the hook command if present, or a deployment command.
 func (hh *HookHandler) getHookAction(payload *Payload, payloadPath string) (*Action, *Info) {
 	if hh.Hook.Command == nil || len(hh.Hook.Command) == 0 {
-		//log.Println("[INFO] hook action: deployment")
+		if hh.Josuke.LogEnabled(TraceLevel) {
+			log.Println("[TRAC] hook action from deployment")
+		}
 		return payload.getDeployAction(hh.Josuke.Deployment, payloadPath)
 	}
 
-	//log.Println("[INFO] hook action ")
+	if hh.Josuke.LogEnabled(TraceLevel) {
+		log.Println("[TRAC] hook action")
+	}
 
 	return &Action{
 		Action: "hook",
@@ -187,5 +204,37 @@ func (hh *HookHandler) BitbucketRequest(rw http.ResponseWriter, req *http.Reques
 
 	if err := action.execute(info); err != nil {
 		log.Printf("[ERR ] Could not execute action. Reason: %s", err)
+	}
+}
+
+var type2scm = map[string]func(hh *HookHandler) *Scm {
+	"bitbucket": func(hh *HookHandler) *Scm {
+		return &Scm{
+			Name: "bitbucket",
+			Title: "Bitbucket",
+			Handler: hh.BitbucketRequest,
+		}
+	},
+	"github": func(hh *HookHandler) *Scm {
+		return &Scm{
+			Name: "github",
+			Title: "GitHub",
+			Handler: hh.GithubRequest,
+		}
+	},
+	"gogs": func(hh *HookHandler) *Scm {
+		return &Scm{
+			Name: "gogs",
+			Title: "Gogs",
+			Handler: hh.GogsRequest,
+		}
+	},
+}
+
+func ParseScmType(hh *HookHandler, t string) *Scm {
+	if fun, ok := type2scm[t]; ok {
+		return fun(hh)
+	} else {
+		return nil
 	}
 }

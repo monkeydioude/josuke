@@ -1,7 +1,12 @@
 ## JoJo's Bizarre webhook handler
 _ゴゴゴゴゴゴ ！_
 
-Josuke is a tiny Github post treatment tool.
+Josuke is a tiny CI/deployment tool that reacts on Gogs/Github/Bitbucket webhook's payload.
+
+Josuke is a simple guy, 3 things and he's happy:
+- Write a JSON config file
+- Run Josuke and feed him your config
+- Go to Github/Bitbucket and set webhooks routes as specified in your config
 
 **Writing a json config file is required.** 
 
@@ -11,7 +16,7 @@ Example of a classic config.json:
 
 ```json
 {
-    "debug": false,
+    "logLevel": "INFO",
     "host": "127.0.0.1",
     "port": 8082,
     "store": "{directory to store payload, optional)",
@@ -99,7 +104,7 @@ openssl req -x509 -newkey rsa:4096 -nodes \
 
 ### Keys definition
 
-- `debug`: prints additional information if `true`.
+- `logLevel`: optional, five levels, from the most verbose to the less verbose: `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`. Defaults to `INFO`.
 - `host`: binds the server to local address. Defaults to localhost.
 - `port`: port Josuke will listen to. Defaults to 8082.
 - `store`: directory, optional. If present, every valid payload is written in this directory with a dynamic name: `{hook.name}.{timestamp}.{random string}.json`. The local path to this file is available to commands with the placeholder `%payload_path%`.
@@ -173,8 +178,6 @@ See [testdata/](testdata/index.md).
 ### Incoming:
 
 - Docker image for testing/building
-- Makefile for all of this
-- Go1.11 Module compliancy
 
 _DORA !_
 
