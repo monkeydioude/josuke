@@ -33,20 +33,20 @@ var name2logLevel = map[string]LogLevel{
 }
 
 func parseLogLevel(value string) (LogLevel, bool) {
-    c, ok := name2logLevel[strings.ToUpper(value)]
-    return c, ok
+	c, ok := name2logLevel[strings.ToUpper(value)]
+	return c, ok
 }
 
 type Josuke struct {
-	LogLevelName  string   `json:"logLevel" default:"INFO"`
-	LogLevel      LogLevel
-	Hooks         *[]*Hook `json:"hook"`
-	Deployment    *[]*Repo `json:"deployment"`
-	Host          string   `json:"host" default:"localhost"`
-	Port          int      `json:"port" default:"8082"`
-	Cert          string   `json:"cert"`
-	Key           string   `json:"key"`
-	Store         string   `json:"store" default:""`
+	LogLevelName string `json:"logLevel" default:"INFO"`
+	LogLevel     LogLevel
+	Hooks        *[]*Hook `json:"hook"`
+	Deployment   *[]*Repo `json:"deployment"`
+	Host         string   `json:"host" default:"localhost"`
+	Port         int      `json:"port" default:"8082"`
+	Cert         string   `json:"cert"`
+	Key          string   `json:"key"`
+	Store        string   `json:"store" default:""`
 }
 
 func New(configFilePath string) (*Josuke, error) {
@@ -62,9 +62,8 @@ func New(configFilePath string) (*Josuke, error) {
 		return nil, errors.New("could not parse json from config file")
 	}
 
-
 	logLevel, ok := parseLogLevel(j.LogLevelName)
-	if ! ok {
+	if !ok {
 		return nil, fmt.Errorf("could not parse the log level: %s", j.LogLevelName)
 	}
 	j.LogLevel = logLevel
@@ -73,7 +72,7 @@ func New(configFilePath string) (*Josuke, error) {
 }
 
 func (j *Josuke) LogEnabled(ll LogLevel) bool {
-	return 	j.LogLevel <= ll
+	return j.LogLevel <= ll
 }
 
 var keyholders = map[string]func(*Info) string{
@@ -92,19 +91,14 @@ var keyholders = map[string]func(*Info) string{
 }
 
 type Hook struct {
-	Name        string `json:"name"`
-	Type        string `json:"type"`
-	Path        string `json:"path"`
-	Secret      string `json:"secret" default:""`
-	SecretBytes []byte
 	// Optional command, takes precedence over deployment commands if set.
 	// Only %payload_path% placeholder is available.
-	Command []string `json:"command" default:[]`
-}
-
-// Matches Hook names from payload and config
-func (h Hook) matches(trial string) bool {
-	return h.Name == trial
+	Command     []string `json:"command"`
+	Name        string   `json:"name"`
+	Type        string   `json:"type"`
+	Path        string   `json:"path"`
+	Secret      string   `json:"secret"`
+	SecretBytes []byte
 }
 
 // Repository represents the payload repository information
@@ -204,7 +198,7 @@ func ExecuteCommand(c []string, i *Info) error {
 		return fmt.Errorf("empty command slice")
 	}
 	name := c[0]
-	args := make([]string, len(c) - 1)
+	args := make([]string, len(c)-1)
 	copy(args, c[1:])
 	args = replaceKeyholders(args, i)
 

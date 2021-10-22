@@ -1,32 +1,22 @@
 package josuke
 
 import (
+	"encoding/hex"
+	"fmt"
 	"io"
 	"io/ioutil"
-	"fmt"
-	"encoding/hex"
 	"log"
-	"net/http"
 	"math/rand"
+	"net/http"
 	"strings"
 	"time"
 )
 
 // Defines a Source Code Management (Gogs, GitHub, BitBucket).
 type Scm struct {
-	Name   string
-	Title  string
+	Name    string
+	Title   string
 	Handler func(http.ResponseWriter, *http.Request)
-}
-
-// retrieve hook from josuke
-func (j *Josuke) getHook(name string) *Hook {
-	for _, hook := range *j.Hooks {
-		if hook.matches(name) {
-			return hook
-		}
-	}
-	return nil
 }
 
 func getBody(reader io.Reader, logLevel LogLevel) (string, error) {
@@ -61,8 +51,8 @@ func randomString(len int) string {
 // Contains the hook and the HTTP response handler.
 type HookHandler struct {
 	Josuke *Josuke
-	Hook *Hook
-	Scm *Scm
+	Hook   *Hook
+	Scm    *Scm
 }
 
 // Checks request HMAC 256 from a HTTP header and runs the action.
@@ -157,14 +147,14 @@ func (hh *HookHandler) getHookAction(payload *Payload, payloadPath string) (*Act
 	}
 
 	return &Action{
-		Action: "hook",
-		Commands: [][]string{hh.Hook.Command},
-	}, &Info{
-		BaseDir: "",
-		ProjDir: "",
-		HtmlUrl: "",
-		PayloadPath: payloadPath,
-	}
+			Action:   "hook",
+			Commands: [][]string{hh.Hook.Command},
+		}, &Info{
+			BaseDir:     "",
+			ProjDir:     "",
+			HtmlUrl:     "",
+			PayloadPath: payloadPath,
+		}
 }
 
 // GogsRequest handles gogs' webhook triggers
@@ -207,25 +197,25 @@ func (hh *HookHandler) BitbucketRequest(rw http.ResponseWriter, req *http.Reques
 	}
 }
 
-var type2scm = map[string]func(hh *HookHandler) *Scm {
+var type2scm = map[string]func(hh *HookHandler) *Scm{
 	"bitbucket": func(hh *HookHandler) *Scm {
 		return &Scm{
-			Name: "bitbucket",
-			Title: "Bitbucket",
+			Name:    "bitbucket",
+			Title:   "Bitbucket",
 			Handler: hh.BitbucketRequest,
 		}
 	},
 	"github": func(hh *HookHandler) *Scm {
 		return &Scm{
-			Name: "github",
-			Title: "GitHub",
+			Name:    "github",
+			Title:   "GitHub",
 			Handler: hh.GithubRequest,
 		}
 	},
 	"gogs": func(hh *HookHandler) *Scm {
 		return &Scm{
-			Name: "gogs",
-			Title: "Gogs",
+			Name:    "gogs",
+			Title:   "Gogs",
 			Handler: hh.GogsRequest,
 		}
 	},
@@ -241,11 +231,11 @@ func parseScmType(hh *HookHandler, t string) *Scm {
 func NewHookHandler(j *Josuke, h *Hook) (*HookHandler, error) {
 	hh := &HookHandler{
 		Josuke: j,
-		Hook: h,
+		Hook:   h,
 	}
 	scm := parseScmType(hh, h.Type)
 	if nil == scm {
-		return nil, fmt.Errorf("Oh, My, God ! Josuke does not know this type of hook: %s. See README.md for help", h.Type)
+		return nil, fmt.Errorf("oh, my, god ! Josuke does not know this type of hook: %s. See README.md for help", h.Type)
 	}
 	hh.Scm = scm
 	return hh, nil
