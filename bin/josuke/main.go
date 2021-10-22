@@ -46,24 +46,19 @@ func main() {
 			hook.SecretBytes = []byte(hook.Secret)
 		}
 
-		hh := &josuke.HookHandler{}
-		hh.Josuke = j
-		hh.Hook = hook
-
-		scm := josuke.ParseScmType(hh, hook.Type)
-		if nil == scm {
-			log.Fatal(fmt.Sprintf("[ERR ] Oh, My, God ! Josuke does not know this type of hook: %s. See README.md for help", hook.Type))
+		hh, err := josuke.NewHookHandler(j, hook)
+		if err != nil {
+			log.Fatal("[ERR ] ", err)
 		}
-		hh.Handler = scm.Handler
 
 		if j.LogEnabled(josuke.InfoLevel) {
-			log.Printf("[INFO] Gureto daze 8), handling %s hook %s\n", scm.Title, hook.Name)
+			log.Printf("[INFO] Gureto daze 8), handling %s hook %s\n", hh.Scm.Title, hh.Hook.Name)
 		}
 
 		if j.LogEnabled(josuke.DebugLevel) && nil != hh.Hook.Command && 0 > len(hh.Hook.Command) {
 			log.Println("[DBG ] hook command: ", hh.Hook.Command)
 		}
-		http.HandleFunc(hook.Path, hh.Handler)
+		http.HandleFunc(hook.Path, hh.Scm.Handler)
 	}
 
 	protocol, handler := findOutProtocolHandler(j)

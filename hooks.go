@@ -62,7 +62,7 @@ func randomString(len int) string {
 type HookHandler struct {
 	Josuke *Josuke
 	Hook *Hook
-	Handler func(http.ResponseWriter, *http.Request)
+	Scm *Scm
 }
 
 // Checks request HMAC 256 from a HTTP header and runs the action.
@@ -231,9 +231,22 @@ var type2scm = map[string]func(hh *HookHandler) *Scm {
 	},
 }
 
-func ParseScmType(hh *HookHandler, t string) *Scm {
+func parseScmType(hh *HookHandler, t string) *Scm {
 	if fun, ok := type2scm[t]; ok {
 		return fun(hh)
 	}
 	return nil
+}
+
+func NewHookHandler(j *Josuke, h *Hook) (*HookHandler, error) {
+	hh := &HookHandler{
+		Josuke: j,
+		Hook: h,
+	}
+	scm := parseScmType(hh, h.Type)
+	if nil == scm {
+		return nil, fmt.Errorf("Oh, My, God ! Josuke does not know this type of hook: %s. See README.md for help", h.Type)
+	}
+	hh.Scm = scm
+	return hh, nil
 }
