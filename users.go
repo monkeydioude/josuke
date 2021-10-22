@@ -33,7 +33,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	
+
 	uid, err := strconv.Atoi(user.Uid)
 	if err != nil {
 		panic(err)

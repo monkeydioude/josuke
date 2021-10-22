@@ -42,9 +42,9 @@ func getBody(reader io.Reader, logLevel LogLevel) (string, error) {
 		fmt.Println(s)
 		log.Println("[DBG ] end body ====")
 		if logLevel <= TraceLevel {
-			log.Println("[VRBS] start body as hex ====")
+			log.Println("[TRAC] start body as hex ====")
 			log.Println(hex.EncodeToString([]byte(s)))
-			log.Println("[VRBS] end body as hex ====")
+			log.Println("[TRAC] end body as hex ====")
 		}
 	}
 	return s, nil
@@ -234,7 +234,6 @@ var type2scm = map[string]func(hh *HookHandler) *Scm {
 func ParseScmType(hh *HookHandler, t string) *Scm {
 	if fun, ok := type2scm[t]; ok {
 		return fun(hh)
-	} else {
-		return nil
 	}
+	return nil
 }

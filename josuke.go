@@ -107,7 +107,7 @@ func (h Hook) matches(trial string) bool {
 	return h.Name == trial
 }
 
-// Repository represents the paylaod repository informations
+// Repository represents the payload repository information
 type Repository struct {
 	Name    string `json:"full_name"`
 	HtmlUrl string `json:"html_url"`
@@ -224,7 +224,8 @@ func ExecuteCommand(c []string, i *Info) error {
 		}
 	}
 	cmd := exec.Command(name, args...)
-	if err := cmd.Run(); err != nil {
+
+	if err := NativeExecuteCommand(cmd); err != nil {
 		return fmt.Errorf("could not execute command %s %v: %s", name, args, err)
 	}
 	return nil
