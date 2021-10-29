@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-// Defines a Source Code Management (Gogs, GitHub, BitBucket).
+// Scm defines a Source Code Management (Gogs, GitHub, BitBucket).
 type Scm struct {
 	Name    string
 	Title   string
@@ -48,14 +48,14 @@ func randomString(len int) string {
 	return string(bytes)
 }
 
-// Contains the hook and the HTTP response handler.
+// HookHandler contains the hook, the SCM and the HTTP response handler.
 type HookHandler struct {
 	Josuke *Josuke
 	Hook   *Hook
 	Scm    *Scm
 }
 
-// Checks request HMAC 256 from a HTTP header and runs the action.
+// GenericRequest checks request HMAC 256 from a HTTP header and runs the action.
 func (hh *HookHandler) GenericRequest(
 	rw http.ResponseWriter,
 	req *http.Request,
@@ -228,6 +228,7 @@ func parseScmType(hh *HookHandler, t string) *Scm {
 	return nil
 }
 
+// NewHookHandler constructs a hook handler with josuke and a hook definition. 
 func NewHookHandler(j *Josuke, h *Hook) (*HookHandler, error) {
 	hh := &HookHandler{
 		Josuke: j,

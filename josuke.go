@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-// Defines a log level
+// LogLevel defines the level of a log.
 type LogLevel int
 
 // Available log levels
@@ -37,6 +37,8 @@ func parseLogLevel(value string) (LogLevel, bool) {
 	return c, ok
 }
 
+// Josuke is the main object, that contains the HTTP server configuration
+// and the hook definitions.
 type Josuke struct {
 	LogLevelName string `json:"logLevel" default:"INFO"`
 	LogLevel     LogLevel
@@ -49,6 +51,7 @@ type Josuke struct {
 	Store        string   `json:"store" default:""`
 }
 
+// New creates a josuke HTTP server that handles SCM webhooks.
 func New(configFilePath string) (*Josuke, error) {
 	file, err := ioutil.ReadFile(configFilePath)
 
@@ -71,6 +74,7 @@ func New(configFilePath string) (*Josuke, error) {
 	return j, nil
 }
 
+// LogEnabled tests if the log statement should be printed for the given level.
 func (j *Josuke) LogEnabled(ll LogLevel) bool {
 	return j.LogLevel <= ll
 }
@@ -90,6 +94,7 @@ var keyholders = map[string]func(*Info) string{
 	},
 }
 
+// A Hook maps HTTP requests to local commands.
 type Hook struct {
 	// Optional command, takes precedence over deployment commands if set.
 	// Only %payload_path% placeholder is available.

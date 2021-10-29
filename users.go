@@ -8,6 +8,7 @@ import (
 	"strconv"
 )
 
+// User on operating system.
 type User struct {
 	Uid  uint32
 	Gid  uint32
@@ -17,6 +18,7 @@ type User struct {
 var currentUser User = User{}
 var defaultUser User = User{}
 
+// GetCurrentUser returns the user to run commands.
 func GetCurrentUser() User {
 	return currentUser
 }
@@ -75,6 +77,7 @@ func getUserID(userName string) (*user.User, error) {
 	return u, nil
 }
 
+// SwitchUser sets the current user with the given one.
 func SwitchUser(userName string) error {
 	user, err := getUserID(userName)
 
