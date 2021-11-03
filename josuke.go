@@ -9,19 +9,49 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"syscall"
+	"strings"
 )
 
-type Josuke struct {
-	GithubHook    string   `json:"github_hook"`
-	BitbucketHook string   `json:"bitbucket_hook"`
-	Deployment    *[]*Repo `json:"deployment"`
-	Host          string   `json:"host" default:"localhost"`
-	Port          int      `json:"port" default:"8082"`
-	Cert          string   `json:"cert"`
-	Key           string   `json:"key"`
+// LogLevel defines the level of a log.
+type LogLevel int
+
+// Available log levels
+const (
+	TraceLevel LogLevel = iota
+	DebugLevel
+	InfoLevel
+	WarnLevel
+	ErrorLevel
+)
+
+var name2logLevel = map[string]LogLevel{
+	"TRACE": TraceLevel,
+	"DEBUG": DebugLevel,
+	"INFO":  InfoLevel,
+	"WARN":  WarnLevel,
+	"ERROR": ErrorLevel,
 }
 
+func parseLogLevel(value string) (LogLevel, bool) {
+	c, ok := name2logLevel[strings.ToUpper(value)]
+	return c, ok
+}
+
+// Josuke is the main object, that contains the HTTP server configuration
+// and the hook definitions.
+type Josuke struct {
+	LogLevelName string `json:"logLevel" default:"INFO"`
+	LogLevel     LogLevel
+	Hooks        *[]*Hook `json:"hook"`
+	Deployment   *[]*Repo `json:"deployment"`
+	Host         string   `json:"host" default:"localhost"`
+	Port         int      `json:"port" default:"8082"`
+	Cert         string   `json:"cert"`
+	Key          string   `json:"key"`
+	Store        string   `json:"store" default:""`
+}
+
+// New creates a josuke HTTP server that handles SCM webhooks.
 func New(configFilePath string) (*Josuke, error) {
 	file, err := ioutil.ReadFile(configFilePath)
 
@@ -35,7 +65,18 @@ func New(configFilePath string) (*Josuke, error) {
 		return nil, errors.New("could not parse json from config file")
 	}
 
+	logLevel, ok := parseLogLevel(j.LogLevelName)
+	if !ok {
+		return nil, fmt.Errorf("could not parse the log level: %s", j.LogLevelName)
+	}
+	j.LogLevel = logLevel
+
 	return j, nil
+}
+
+// LogEnabled tests if the log statement should be printed for the given level.
+func (j *Josuke) LogEnabled(ll LogLevel) bool {
+	return j.LogLevel <= ll
 }
 
 var keyholders = map[string]func(*Info) string{
@@ -48,9 +89,24 @@ var keyholders = map[string]func(*Info) string{
 	"%html_url%": func(i *Info) string {
 		return i.HtmlUrl
 	},
+	"%payload_path%": func(i *Info) string {
+		return i.PayloadPath
+	},
 }
 
-// Repository represents the paylaod repository informations
+// A Hook maps HTTP requests to local commands.
+type Hook struct {
+	// Optional command, takes precedence over deployment commands if set.
+	// Only %payload_path% placeholder is available.
+	Command     []string `json:"command"`
+	Name        string   `json:"name"`
+	Type        string   `json:"type"`
+	Path        string   `json:"path"`
+	Secret      string   `json:"secret"`
+	SecretBytes []byte
+}
+
+// Repository represents the payload repository information
 type Repository struct {
 	Name    string `json:"full_name"`
 	HtmlUrl string `json:"html_url"`
@@ -71,9 +127,10 @@ func (r Repo) matches(trial string) bool {
 
 // Info contains various data about directory to deploy to and git's repo url
 type Info struct {
-	BaseDir string
-	ProjDir string
-	HtmlUrl string
+	BaseDir     string
+	ProjDir     string
+	HtmlUrl     string
+	PayloadPath string
 }
 
 // Branch mirrors config's branch section, containing branch Name & Actions linked to it
@@ -124,8 +181,7 @@ func fetchPayload(r io.Reader) (*Payload, error) {
 	return payload, nil
 }
 
-func chdir(args []string, i *Info) error {
-	args = replaceKeyholders(args, i)
+func chdir(args []string) error {
 	if err := os.Chdir(args[0]); err != nil {
 		return fmt.Errorf("%s on \"%s\" directory", err.Error(), args[0])
 	}
@@ -147,15 +203,14 @@ func ExecuteCommand(c []string, i *Info) error {
 		return fmt.Errorf("empty command slice")
 	}
 	name := c[0]
-	var args []string
-	if len(c) > 1 {
-		args = c[1:]
-	}
+	args := make([]string, len(c)-1)
+	copy(args, c[1:])
+	args = replaceKeyholders(args, i)
 
-	log.Printf("[INFO] executing %+v\n", c)
+	log.Printf("[INFO] executing %s %+v\n", name, args)
 
 	if name == "cd" {
-		return chdir(args, i)
+		return chdir(args)
 	}
 
 	if yes, user := isSwitchUserCall(name); yes {
@@ -167,11 +222,9 @@ func ExecuteCommand(c []string, i *Info) error {
 			return nil
 		}
 	}
-	args = replaceKeyholders(args, i)
 	cmd := exec.Command(name, args...)
-	cmd.SysProcAttr = &syscall.SysProcAttr{}
-	cmd.SysProcAttr.Credential = &syscall.Credential{Uid: currentUser.Uid, Gid: currentUser.Gid}
-	if err := cmd.Run(); err != nil {
+
+	if err := NativeExecuteCommand(cmd); err != nil {
 		return fmt.Errorf("could not execute command %s %v: %s", name, args, err)
 	}
 	return nil

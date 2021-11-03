@@ -1,0 +1,9 @@
+{
+	"ref": "refs/heads/master",
+	"action": "push",
+	"branch": "master",
+	"repository": {
+		"full_name": "monkeydioude/josuke",
+		"html_url": "https://github.com/monkeydioude/josuke"
+	}
+}

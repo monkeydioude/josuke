@@ -31,23 +31,39 @@ func main() {
 	j, err := josuke.New(*configFileName)
 
 	if err != nil {
-		log.Printf("[ERR ] %s", err)
+		log.Fatal("[ERR ] ", err)
 	}
 
-	if j.BitbucketHook == "" && j.GithubHook == "" {
-		log.Println("[ERR ] MUDA MUDA MUDA ! Josuke needs to handle at least one type of hook. See README.md for help")
+	if *j.Hooks == nil || len(*j.Hooks) == 0 {
+		log.Fatal("[ERR ] MUDA MUDA MUDA ! Josuke needs to handle at least one type of hook. See README.md for help")
 	}
 
-	if j.GithubHook != "" {
-		http.HandleFunc(j.GithubHook, j.GithubRequest)
-		log.Println("[INFO] Gureto daze 8), handling Github hooks")
-	}
-	if j.BitbucketHook != "" {
-		http.HandleFunc(j.BitbucketHook, j.BitbucketRequest)
-		log.Println("[INFO] Gureto daze 8), handling Bitbucket hooks")
+	for _, hook := range *j.Hooks {
+		if j.LogEnabled(josuke.TraceLevel) {
+			log.Printf("[TRAC] add hook %s (%s): %s\n", hook.Name, hook.Type, hook.Path)
+		}
+		if hook.Secret != "" && hook.SecretBytes == nil {
+			hook.SecretBytes = []byte(hook.Secret)
+		}
+
+		hh, err := josuke.NewHookHandler(j, hook)
+		if err != nil {
+			log.Fatal("[ERR ] ", err)
+		}
+
+		if j.LogEnabled(josuke.InfoLevel) {
+			log.Printf("[INFO] Gureto daze 8), handling %s hook %s\n", hh.Scm.Title, hh.Hook.Name)
+		}
+
+		if j.LogEnabled(josuke.DebugLevel) && nil != hh.Hook.Command && 0 > len(hh.Hook.Command) {
+			log.Println("[DBG ] hook command: ", hh.Hook.Command)
+		}
+		http.HandleFunc(hook.Path, hh.Scm.Handler)
 	}
 
 	protocol, handler := findOutProtocolHandler(j)
-	log.Printf("[INFO] Listening %s://%s:%d\n", protocol, j.Host, j.Port)
+	if j.LogEnabled(josuke.InfoLevel) {
+		log.Printf("[INFO] Listening %s://%s:%d\n", protocol, j.Host, j.Port)
+	}
 	log.Fatal(handler())
 }

@@ -7,6 +7,7 @@ import (
 	"log"
 )
 
+// Bitbucket push type and repository.
 type Bitbucket struct {
 	Push struct {
 		Changes []struct {
@@ -19,7 +20,7 @@ type Bitbucket struct {
 	Repository struct {
 		Fullname string `json:"full_name"`
 		Links    struct {
-			Html struct {
+			HTML struct {
 				Href string `json:"href"`
 			} `json:"html"`
 		} `json:"links"`
@@ -43,10 +44,10 @@ func bitbucketToPayload(r io.Reader) *Payload {
 	return &Payload{
 		Ref:     fmt.Sprintf("refs/heads/%s", b.Push.Changes[0].New.Name),
 		Action:  "push",
-		HtmlUrl: b.Repository.Links.Html.Href,
+		HtmlUrl: b.Repository.Links.HTML.Href,
 		Repository: Repository{
 			Name:    b.Repository.Fullname,
-			HtmlUrl: b.Repository.Links.Html.Href,
+			HtmlUrl: b.Repository.Links.HTML.Href,
 		},
 	}
 }

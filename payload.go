@@ -22,7 +22,7 @@ func (p *Payload) getBranch(r *Repo) *Branch {
 	return nil
 }
 
-// retrieve repo from config using Paylaod
+// retrieve repo from config using Payload
 func (p *Payload) getRepo(deployment *[]*Repo) *Repo {
 	for _, repo := range *deployment {
 		if repo.matches(p.Repository.Name) {
@@ -33,7 +33,7 @@ func (p *Payload) getRepo(deployment *[]*Repo) *Repo {
 }
 
 // Process of retrieving deploy information from github payload
-func (p *Payload) getDeployAction(deployment *[]*Repo) (*Action, *Info) {
+func (p *Payload) getDeployAction(deployment *[]*Repo, payloadPath string) (*Action, *Info) {
 	repo := p.getRepo(deployment)
 	if repo == nil {
 		log.Println("[WARN] Could not match any repo in config file. We'll just do nothing.")
@@ -47,13 +47,14 @@ func (p *Payload) getDeployAction(deployment *[]*Repo) (*Action, *Info) {
 	// ref = fmt.Sprintf("%s%s", staticRefPrefix, )
 	action := p.getAction(branch)
 	if action == nil {
-		log.Println("[WARN] Could not find any matchin action. We'll just do nothing.")
+		log.Println("[WARN] Could not find any matching action. We'll just do nothing.")
 		return nil, nil
 	}
 	return action, &Info{
 		BaseDir: repo.BaseDir,
 		ProjDir: repo.ProjDir,
 		HtmlUrl: p.Repository.HtmlUrl,
+		PayloadPath: payloadPath,
 	}
 }
 
