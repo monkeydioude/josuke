@@ -44,11 +44,11 @@ type Josuke struct {
 	LogLevel     LogLevel
 	Hooks        *[]*Hook `json:"hook"`
 	Deployment   *[]*Repo `json:"deployment"`
-	Host         string   `json:"host" default:"localhost"`
-	Port         int      `json:"port" default:"8082"`
+	Host         string   `json:"host"`
+	Port         int      `json:"port"`
 	Cert         string   `json:"cert"`
 	Key          string   `json:"key"`
-	Store        string   `json:"store" default:""`
+	Store        string   `json:"store"`
 }
 
 // New creates a josuke HTTP server that handles SCM webhooks.
@@ -59,7 +59,11 @@ func New(configFilePath string) (*Josuke, error) {
 		return nil, fmt.Errorf("could not read config file: %v", err)
 	}
 
-	j := &Josuke{}
+	j := &Josuke{
+		LogLevelName: "INFO",
+		Host: "localhost",
+		Port: 8082,
+	}
 
 	if err := json.Unmarshal(file, j); err != nil {
 		return nil, errors.New("could not parse json from config file")
