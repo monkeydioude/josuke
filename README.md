@@ -186,23 +186,24 @@ Then using Makefile (Unix/Linux/MacOS/WSL on Windows):
 Or with shell startup script (Unix/Linux/MacOS/WSL on Windows):
 - `CONF_FILE=/path/to/config/json script/run.sh`
 
-Or using Golang only:
+Or using Golang only (only available option for Windows users not using WSL):
 - `go install`
 - `josuke -c /path/to/config/json`
 
 __With Docker__
 - Install [Docker](https://docs.docker.com/get-docker/)
 
-Then using Makefile:
-- (For Windows users, `make` is available using [chocolatey](https://chocolatey.org/install). Using WSL on Windows is also a very good option)
-- `CONF_FILE=/path/to/config/json make docker`
+Then using Makefile (Unix/Linux/MacOS/WSL on Windows):
+- `make docker-start CONF_FILE=/path/to/config/json`
+
+## Healthcheck:
+Available at `/healthcheck`
 
 Or with Docker only:
-- docker build -f build/linux_Dockerfile -t josuke-linux .
-- docker run --network="host" -d -e "CONF_FILE=/path/to/config/json" josuke-linux
+- docker build -f build/Dockerfile -t josuke .
+- docker run --network="host" -d -e "CONF_FILE=/path/to/config/json" josuke
 
 _DORA !_
-
 
 
 ![](https://68.media.tumblr.com/7b9b18644e2d491cc25267ebde23ec23/tumblr_ohxk9dpmoq1tqvsfso1_540.gif)
