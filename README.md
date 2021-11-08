@@ -181,7 +181,7 @@ __With Golang__:
 - Install [the Go language](https://golang.org/dl/)
 
 Then using Makefile (Unix/Linux/MacOS/WSL on Windows):
-- `CONF_FILE=/path/to/config/json make start`
+- `CONF_FILE=/path/to/config/json make go_start`
 
 Or with shell startup script (Unix/Linux/MacOS/WSL on Windows):
 - `CONF_FILE=/path/to/config/json script/run.sh`
@@ -194,7 +194,7 @@ __With Docker__
 - Install [Docker](https://docs.docker.com/get-docker/)
 
 Then using Makefile (Unix/Linux/MacOS/WSL on Windows):
-- `make docker-start CONF_FILE=/path/to/config/json`
+- `CONF_FILE=/path/to/config/json make start`
 
 ## Healthcheck:
 Available at `/healthcheck`

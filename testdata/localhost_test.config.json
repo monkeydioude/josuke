@@ -1,7 +1,6 @@
 {
     "logLevel": "DEBUG",
     "host": "localhost",
-    "port": 8081,
     "#key": "key.pem",
     "#cert": "cert.pem",
     "store": "/home/mkd/Work/go/src/github.com/monkeydioude/work",
