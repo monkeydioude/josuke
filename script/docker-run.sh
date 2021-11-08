@@ -1,10 +1,24 @@
 #!/bin/sh
 
-DEFAULT_PORT=8081
+u_ok_jojo() {
+    maxIt=4
+    sleepDuration=1
+    for d in `seq 1 $maxIt`; do 
+        if [ ! $(docker ps -qf ancestor="$BIN_IMAGE_NAME") = "" ]; then
+            return 0
+        else
+            printf "[INFO] container did not start yet. sleep $sleepDuration \n"
+            sleep $sleepDuration
+        fi
+    done
+    return 1
+}
+
+DEFAULT_PORT=8082
 
 # Expecting optional BIN_IMAGE_NAME env var from Makefile
 if [ -z $BIN_IMAGE_NAME ]; then
-    echo "[WARN] BIN_IMAGE_NAME not set. Using `josuke` as default"
+    echo "[WARN] BIN_IMAGE_NAME not set. Using 'josuke' as default"
     BIN_IMAGE_NAME=josuke
 fi
 
@@ -14,24 +28,25 @@ if [ -z $CONF_FILE ]; then
     exit 1
 fi
 
-# Checking container is not already running
-CONTAINER_ID=$(docker ps -qf ancestor=$BIN_IMAGE_NAME)
-if [ -n $CONTAINER_ID ] && [ ! $CONTAINER_ID = "" ]; then
-    echo "[ERR ] Container with ID $CONTAINER_ID already running for image $BIN_IMAGE_NAME"
+# Checking image already has a running container
+CONTAINER_ID=$(docker ps -qf ancestor="$BIN_IMAGE_NAME")
+if [ ! $CONTAINER_ID = "" ]; then
+    echo "[ERR ] Container with ID '$CONTAINER_ID' already running for image '$BIN_IMAGE_NAME'"
     exit 1
 fi
 
 PORT=$(jq '.port' "$CONF_FILE")
 
-if [ $PORT  = "" ]; then
-    echo "[WARN] `port` not found in conf file $CONF_FILE, using $DEFAULT_PORT"
+if [ $PORT  = "null" ]; then
+    echo "[WARN] 'port' not found in conf file $CONF_FILE, using $DEFAULT_PORT"
     PORT=$DEFAULT_PORT
 fi
 
 docker run --network="host" -d -e "CONF_FILE=$CONF_FILE" -e "PORT=$PORT" $BIN_IMAGE_NAME
-sleep 1
 
-if [ -z $(docker ps -qf ancestor=$BIN_IMAGE_NAME) ]; then
+# checking container status
+u_ok_jojo
+if [ $? = 1 ]; then
     echo "[ERR ] Container did not start"
     exit 1
 fi

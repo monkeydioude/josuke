@@ -1,7 +1,7 @@
 FROM golang:1.15-alpine
 WORKDIR /src
 COPY . .
-EXPOSE 8081
+EXPOSE 8082
 RUN go build -o /out/josuke ./bin/josuke
 RUN apk add curl
 # The following RUN command is sponsored by "The Linux Order" and
