@@ -1,4 +1,4 @@
-.PHONY: start run stop restart go_start
+.PHONY: start run stop restart shell go_start
 
 BIN_IMAGE_NAME=josuke
 
@@ -13,6 +13,9 @@ stop:
 	docker stop $(shell docker ps -qf ancestor=$(BIN_IMAGE_NAME))
 
 restart: stop start
+
+shell:
+	docker exec -it $(shell docker ps -qf ancestor=$(BIN_IMAGE_NAME)) sh
 
 go_start:
 	@./script/run.sh
