@@ -15,7 +15,7 @@ stop:
 restart: stop start
 
 shell:
-	docker exec -it $(shell docker ps -qf ancestor=$(BIN_IMAGE_NAME)) sh
+	docker exec -it $(shell docker ps -qf ancestor=$(BIN_IMAGE_NAME)) /bin/sh
 
 go_start:
 	@./script/run.sh
