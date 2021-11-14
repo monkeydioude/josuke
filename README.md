@@ -171,16 +171,39 @@ The **repository rules** objects are defined as such:
 - `%html_url%`: retrieved from gogs/github/bitbucket's payload informations, html url of your repo
 - `%payload_path%`: path to the payload, available if enabled with `store` in the configuration. Otherwise, empty.
 
-### Tests ###
+### Tests:
 
 See [testdata/](testdata/index.md).
 
-### Incoming:
+### Build and run instructions:
 
-- Docker image for testing/building
+__With Golang__:
+- Install [the Go language](https://golang.org/dl/)
+
+Then using Makefile (Unix/Linux/MacOS/WSL on Windows):
+- `CONF_FILE=/path/to/config/json make go_start`
+
+Or with shell startup script (Unix/Linux/MacOS/WSL on Windows):
+- `CONF_FILE=/path/to/config/json script/run.sh`
+
+Or using Golang only (only available option for Windows users not using WSL):
+- `go install`
+- `josuke -c /path/to/config/json`
+
+__With Docker__
+- Install [Docker](https://docs.docker.com/get-docker/)
+
+Then using Makefile (Unix/Linux/MacOS/WSL on Windows):
+- `CONF_FILE=/path/to/config/json make start`
+
+## Healthcheck:
+Available at `/healthcheck`
+
+Or with Docker only:
+- docker build -f build/Dockerfile -t josuke .
+- docker run --network="host" -d -e "CONF_FILE=/path/to/config/json" josuke
 
 _DORA !_
-
 
 
 ![](https://68.media.tumblr.com/7b9b18644e2d491cc25267ebde23ec23/tumblr_ohxk9dpmoq1tqvsfso1_540.gif)

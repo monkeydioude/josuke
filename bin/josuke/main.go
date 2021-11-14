@@ -60,6 +60,10 @@ func main() {
 		}
 		http.HandleFunc(hook.Path, hh.Scm.Handler)
 	}
+	http.HandleFunc("/healthcheck", func(rw http.ResponseWriter, r *http.Request) {
+		rw.WriteHeader(200)
+		rw.Write([]byte("I'm fine"))
+	})
 
 	protocol, handler := findOutProtocolHandler(j)
 	if j.LogEnabled(josuke.InfoLevel) {
