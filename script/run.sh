@@ -14,4 +14,4 @@ fi
 
 cd "$BASE_PATH/bin/josuke" && go build -o "$GOPATH/josuke"
 
-"$GOPATH/josuke" -c "$BASE_PATH$CONF_FILE"
+"$GOPATH/josuke" -c "$BASE_PATH/$CONF_FILE"
