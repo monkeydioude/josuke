@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"os/exec"
 	"strings"
@@ -40,7 +41,7 @@ func parseLogLevel(value string) (LogLevel, bool) {
 // Josuke is the main object, that contains the HTTP server configuration
 // and the hook definitions.
 type Josuke struct {
-	LogLevelName string   `json:"logLevel"`
+	LogLevelName string `json:"logLevel"`
 	LogLevel     LogLevel
 	Hooks        *[]*Hook `json:"hook"`
 	Deployment   *[]*Repo `json:"deployment"`
@@ -61,8 +62,8 @@ func New(configFilePath string) (*Josuke, error) {
 
 	j := &Josuke{
 		LogLevelName: "INFO",
-		Host: "localhost",
-		Port: 8082,
+		Host:         "localhost",
+		Port:         8082,
 	}
 
 	if err := json.Unmarshal(file, j); err != nil {
@@ -81,6 +82,36 @@ func New(configFilePath string) (*Josuke, error) {
 // LogEnabled tests if the log statement should be printed for the given level.
 func (j *Josuke) LogEnabled(ll LogLevel) bool {
 	return j.LogLevel <= ll
+}
+
+// HandleHooks declare http Handlers from hooks defined
+// in configuration's json given to binary
+func (j *Josuke) HandleHooks() {
+	if j.Hooks == nil {
+		return
+	}
+	for _, hook := range *j.Hooks {
+		if j.LogEnabled(TraceLevel) {
+			log.Printf("[TRAC] add hook %s (%s): %s\n", hook.Name, hook.Type, hook.Path)
+		}
+		if hook.Secret != "" && hook.SecretBytes == nil {
+			hook.SecretBytes = []byte(hook.Secret)
+		}
+
+		hh, err := NewHookHandler(j, hook)
+		if err != nil {
+			log.Fatal("[ERR ] ", err)
+		}
+
+		if j.LogEnabled(InfoLevel) {
+			log.Printf("[INFO] Gureto daze 8), handling %s hook %s\n", hh.Scm.Title, hh.Hook.Name)
+		}
+
+		if j.LogEnabled(DebugLevel) && nil != hh.Hook.Command && 0 > len(hh.Hook.Command) {
+			log.Println("[DBG ] hook command: ", hh.Hook.Command)
+		}
+		http.HandleFunc(hook.Path, hh.Scm.Handler)
+	}
 }
 
 var keyholders = map[string]func(*Info) string{

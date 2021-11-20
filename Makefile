@@ -1,6 +1,7 @@
-.PHONY: install start run stop restart shell test logs attach sa ra rsa go_start go_test
+.PHONY: install start run stop restart shell bb test logs offline_logs attach sa ra rsa sr go_start go_test
 
 BIN_IMAGE_NAME=josuke
+RUNNING_CONTAINER_ID=$(shell docker ps -qf ancestor=$(BIN_IMAGE_NAME))
 
 install:
 	git config core.hooksPath $(shell pwd)/.githooks
@@ -26,17 +27,25 @@ shell:
 test:
 	@TEST_IMAGE_NAME=$(BIN_IMAGE_NAME)-test:latest ./script/docker-test.sh
 
+bb:
+	docker exec -it $(shell docker ps -alqf ancestor=$(BIN_IMAGE_NAME)) go build -o /out/josuke /src/bin/josuke
+
 logs:
+	docker exec -it $(RUNNING_CONTAINER_ID) tail -f /var/log/josuke
+
+offline_logs:
 	@BIN_IMAGE_NAME=$(BIN_IMAGE_NAME) ./script/docker-container-logs.sh
 
 attach:
-	docker attach $(shell docker ps -qf ancestor=$(BIN_IMAGE_NAME))
+	docker attach --detach-keys="d" $(shell docker ps -qf ancestor=$(BIN_IMAGE_NAME))
 
 sa: start attach
 
 ra: run attach
 
 rsa: restart attach 
+
+sr: stop run
 
 go_start:
 	@./script/run.sh

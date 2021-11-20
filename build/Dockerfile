@@ -3,18 +3,17 @@ WORKDIR /src
 COPY . .
 EXPOSE 8082
 
+RUN apk add openrc curl jq rsyslog
+
 # Make alpine's sh source this shell profile file on opening a shell
 ENV ENV="/etc/profile"
 
-RUN go build -o /out/josuke ./bin/josuke
-RUN apk add curl
-RUN echo 'alias l="ls -la"' >> /etc/profile.d/aliases.sh
-# The following RUN command is sponsored by "The Linux Order" and
-# its most proficient adept Pyxide.
-RUN apk add jq
+RUN rc-update add rsyslog boot
 
-HEALTHCHECK --interval=5s --timeout=3s --start-period=5s --retries=3 CMD curl --fail http://localhost:$PORT/healthcheck || exit 1
-ENTRYPOINT DOCKER=1 /src/script/run.sh
+RUN echo 'alias l="ls -la"' >> /etc/profile.d/aliases.sh
+
+HEALTHCHECK --interval=3s --timeout=3s --start-period=1s --retries=3 CMD curl --fail http://localhost:$PORT/healthcheck || exit 1
+ENTRYPOINT DOCKER=1 go build -o /out/josuke ./bin/josuke && /src/script/run.sh
 
 FROM build as test
 WORKDIR /src

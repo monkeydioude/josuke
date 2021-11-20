@@ -2,13 +2,14 @@
 
 u_ok_jojo() {
     maxIt=4
-    sleepDuration=1
+    sleepDuration=3
     sleep $sleepDuration
     for d in `seq 1 $maxIt`; do 
-        if [ ! $(docker ps -qf ancestor="$BIN_IMAGE_NAME") = "" ]; then
+        containerID=$(docker ps -qf ancestor="$BIN_IMAGE_NAME")
+        if [ ! $containerID = "" ] && [ $(docker inspect --format="{{.State.Health.Status}}" $containerID) = "healthy" ]; then
             return 0
         else
-            printf "[INFO] container did not start yet. sleep $sleepDuration \n"
+            printf "[WARN] container did not start yet. Sleeping "$sleepDuration"s \n"
             sleep $sleepDuration
         fi
     done
@@ -43,12 +44,12 @@ if [ $PORT  = "null" ]; then
     PORT=$DEFAULT_PORT
 fi
 
-docker run --network="host" -d -e "CONF_FILE=$CONF_FILE" -e "PORT=$PORT" $BIN_IMAGE_NAME
+docker run --log-driver syslog --network="host" -d -e "CONF_FILE=$CONF_FILE" -e "PORT=$PORT" $BIN_IMAGE_NAME
 
 # checking container status
 u_ok_jojo
 if [ $? = 1 ]; then
-    echo "[ERR ] Container did not start"
+    echo "[ERR ] Container did not start properly (not running or unhealthy)"
     exit 1
 fi
 
