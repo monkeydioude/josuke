@@ -1,4 +1,4 @@
-.PHONY: install start run stop restart shell test go_start go_test
+.PHONY: install start run stop restart shell test logs attach sa ra rsa go_start go_test
 
 BIN_IMAGE_NAME=josuke
 
@@ -25,6 +25,18 @@ shell:
 
 test:
 	@TEST_IMAGE_NAME=$(BIN_IMAGE_NAME)-test:latest ./script/docker-test.sh
+
+logs:
+	@BIN_IMAGE_NAME=$(BIN_IMAGE_NAME) ./script/docker-container-logs.sh
+
+attach:
+	docker attach $(shell docker ps -qf ancestor=$(BIN_IMAGE_NAME))
+
+sa: start attach
+
+ra: run attach
+
+rsa: restart attach 
 
 go_start:
 	@./script/run.sh

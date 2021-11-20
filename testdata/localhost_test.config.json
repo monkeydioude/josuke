@@ -5,35 +5,6 @@
     "#key": "key.pem",
     "#cert": "cert.pem",
     "store": "/home/mkd/Work/go/src/github.com/monkeydioude/work",
-    "hook": [
-        {
-            "name": "gogs",
-            "type": "gogs",
-            "path": "/josuke/gogs",
-            "secret": "a1031c7efdea95bce520fda9feff5ec3",
-            "command": [
-                "/home/mkd/Work/josuke/script/hook",
-                "%payload_path%"
-            ],
-            "#command": [
-                "C:/Users/mkd/AppData/Local/Programs/Git/bin/sh.exe",
-                "C:/Users/mkd/pxd/work/josuke/script/hook",
-                "%payload_path%"
-            ]
-        },
-        {
-            "name": "github",
-            "type": "github",
-            "path": "/josuke/github",
-            "secret": "8118eb0123456fed42ccab23b01edd55"
-        },
-        {
-            "name": "bitbucket",
-            "type": "bitbucket",
-            "path": "/josuke/bitbucket",
-            "secret": "bea1b0cce1012345"
-        }
-    ],
     "deployment":
     [
         {
@@ -50,11 +21,8 @@
                             "action": "push",
                             "commands":
                             [
-                                ["/home/mkd/Work/go/src/github.com/monkeydioude/test/hook.sh", "%payload_path%"]
-                            ],
-                            "#windows-command": [
-                                ["C:/Users/mkd/Work/go/src/github.com/monkeydioude/test/hook.cmd", "%payload_path%"]
-                            ]
+                                ["touch", "/tmp/salut"]
+                            ]                        
                         }
                     ]
                 }

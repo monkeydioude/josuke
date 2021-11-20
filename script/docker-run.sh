@@ -3,6 +3,7 @@
 u_ok_jojo() {
     maxIt=4
     sleepDuration=1
+    sleep $sleepDuration
     for d in `seq 1 $maxIt`; do 
         if [ ! $(docker ps -qf ancestor="$BIN_IMAGE_NAME") = "" ]; then
             return 0
@@ -51,3 +52,4 @@ if [ $? = 1 ]; then
     exit 1
 fi
 
+echo "[INFO] Container running on http://localhost:$PORT"
