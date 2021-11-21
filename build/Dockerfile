@@ -3,12 +3,10 @@ WORKDIR /src
 COPY . .
 EXPOSE 8082
 
-RUN apk add openrc curl jq rsyslog
+RUN apk add openrc curl jq
 
 # Make alpine's sh source this shell profile file on opening a shell
 ENV ENV="/etc/profile"
-
-RUN rc-update add rsyslog boot
 
 RUN echo 'alias l="ls -la"' >> /etc/profile.d/aliases.sh
 

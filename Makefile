@@ -39,12 +39,6 @@ offline_logs:
 attach:
 	docker attach --detach-keys="d" $(shell docker ps -qf ancestor=$(BIN_IMAGE_NAME))
 
-sa: start attach
-
-ra: run attach
-
-rsa: restart attach 
-
 sr: stop run
 
 go_start:

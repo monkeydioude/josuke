@@ -196,12 +196,26 @@ __With Docker__
 Then using Makefile (Unix/Linux/MacOS/WSL on Windows):
 - `CONF_FILE=/path/to/config/json make start`
 
-## Healthcheck:
-Available at `/healthcheck`
-
 Or with Docker only:
 - docker build -f build/Dockerfile -t josuke .
 - docker run --network="host" -d -e "CONF_FILE=/path/to/config/json" josuke
+
+## Healthcheck:
+Once Josuke is running, healthcheck HTTP status is available at `/healthcheck`
+
+## Makefile:
+- `stop`: stop josuke running docker container
+- `start`: build josuke docker image and run it
+- `restart`: `stop` + `start`
+- `run`: run a docker container using already built josuke image
+- `sr`: `stop` + `run`
+- `shell`: run a shell (/bin/sh) in a running josuke container
+- `bb`: rebuild josuke binary inside a running container
+- `logs`: read josuke's log file (/var/log/josuke) inside a running container
+- `offline_logs`: read logs of the lastet, running or not, josuke container from host's physical log files (/var/lig/docker/containers/$CONTAINER_ID/$CONTAINER_ID-json.log)
+- `attach`: attach a tty to a running container. Be advised that detaching the freshly attached tty might require to kill process
+
+Default make rule is `start`
 
 _DORA !_
 
