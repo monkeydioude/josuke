@@ -1,9 +1,12 @@
-.PHONY: init start run stop restart shell test go_start go_test
+.PHONY: install start run stop restart shell test go_start go_test
 
 BIN_IMAGE_NAME=josuke
 
 install:
-	git config core.hooksPath .githooks
+	git config core.hooksPath $(shell pwd)/.githooks
+	@# Not optimal (won't have hooks update unless triggering this rule again),
+	@# but in case of not having a git version < 2.9
+	cp ./.githooks/* ./.git/hooks/
 
 start:
 	docker build --target build -f build/Dockerfile -t $(BIN_IMAGE_NAME) .

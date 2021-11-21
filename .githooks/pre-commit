@@ -1,5 +1,7 @@
 #!/bin/sh
 
+echo "[INFO] now starting pre-commit hook"
+
 run_tests_with_docker() {
     if [ -z $(command -v docker) ]; then
         return 1
