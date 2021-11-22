@@ -44,7 +44,7 @@ if [ $PORT  = "null" ]; then
     PORT=$DEFAULT_PORT
 fi
 
-docker run --log-driver syslog --network="host" -d -e "CONF_FILE=$CONF_FILE" -e "PORT=$PORT" $BIN_IMAGE_NAME
+docker run --log-driver syslog --network="host" -d -v $(pwd):/src -e "CONF_FILE=$CONF_FILE" -e "PORT=$PORT" $BIN_IMAGE_NAME
 
 # checking container status
 u_ok_jojo

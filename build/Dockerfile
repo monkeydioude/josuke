@@ -1,6 +1,5 @@
 FROM golang:1.15-alpine as build
 WORKDIR /src
-COPY . .
 EXPOSE 8082
 
 RUN apk add openrc curl jq

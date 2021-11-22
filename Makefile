@@ -1,4 +1,4 @@
-.PHONY: install start run stop restart shell bb test logs offline_logs attach sa ra rsa sr go_start go_test
+.PHONY: install start build run stop restart shell bb test logs offline_logs attach sa ra rsa sr go_start go_test
 
 BIN_IMAGE_NAME=josuke
 RUNNING_CONTAINER_ID=$(shell docker ps -qf ancestor=$(BIN_IMAGE_NAME))
@@ -9,9 +9,10 @@ install:
 	@# but in case of having git version < 2.9
 	cp ./.githooks/* ./.git/hooks/
 
-start:
-	docker build --target build -f build/Dockerfile -t $(BIN_IMAGE_NAME) .
-	$(MAKE) run BIN_IMAGE_NAME=$(BIN_IMAGE_NAME) CONF_FILE=$(CONF_FILE)
+start: build run
+
+build:
+	docker build -f build/Dockerfile -t $(BIN_IMAGE_NAME) .
 
 run:
 	@BIN_IMAGE_NAME=$(BIN_IMAGE_NAME) CONF_FILE=$(CONF_FILE) ./script/docker-run.sh
@@ -40,6 +41,9 @@ attach:
 	docker attach --detach-keys="d" $(shell docker ps -qf ancestor=$(BIN_IMAGE_NAME))
 
 sr: stop run
+
+ftest:
+	@BIN_IMAGE_NAME="$(BIN_IMAGE_NAME)" ./script/functional-test-runner.sh
 
 go_start:
 	@./script/run.sh
