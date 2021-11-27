@@ -9,7 +9,7 @@ u_ok_jojo() {
         if [ ! $containerID = "" ] && [ $(docker inspect --format="{{.State.Health.Status}}" $containerID) = "healthy" ]; then
             return 0
         else
-            printf "[WARN] container did not start yet. Sleeping "$sleepDuration"s \n"
+            printf "[WARN] container did not start yet. Sleeping for "$sleepDuration"s \n"
             sleep $sleepDuration
         fi
     done
@@ -33,24 +33,31 @@ fi
 # Checking image already has a running container
 CONTAINER_ID=$(docker ps -qf ancestor="$BIN_IMAGE_NAME")
 if [ ! $CONTAINER_ID = "" ]; then
-    echo "[ERR ] Container with ID '$CONTAINER_ID' already running for image '$BIN_IMAGE_NAME'"
+    echo "[ERR ] container with ID '$CONTAINER_ID' already running for image '$BIN_IMAGE_NAME'"
     exit 1
 fi
 
-PORT=$(jq '.port' "$CONF_FILE")
+PORT=$(cat "$CONF_FILE" | docker run -i imega/jq '.port')
 
 if [ $PORT  = "null" ]; then
     echo "[WARN] 'port' not found in conf file $CONF_FILE, using $DEFAULT_PORT"
     PORT=$DEFAULT_PORT
 fi
 
-docker run --log-driver syslog --network="host" -d -v $(pwd):/src -e "CONF_FILE=$CONF_FILE" -e "PORT=$PORT" $BIN_IMAGE_NAME
+RM_FLAG= 
+if [ -n $RM ]; then
+    echo "[INFO] RM_FLAG is set, container will run with --rm flag" 
+    RM_FLAG=--rm
+fi
+
+containerID=$(docker run --network="host" $RM_FLAG -d -v $(pwd):/src -e "CONF_FILE=$CONF_FILE" -e "PORT=$PORT" $BIN_IMAGE_NAME)
+echo "[INFO] container running with untruncated ID '$containerID'"
 
 # checking container status
 u_ok_jojo
 if [ $? = 1 ]; then
-    echo "[ERR ] Container did not start properly (not running or unhealthy)"
+    echo "[ERR ] container did not start properly (not running or unhealthy)"
     exit 1
 fi
 
-echo "[INFO] Container running on http://localhost:$PORT"
+echo "[INFO] container running on http://localhost:$PORT"

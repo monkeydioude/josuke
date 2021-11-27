@@ -1,0 +1,37 @@
+{
+    "logLevel": "INFO",
+    "host": "127.0.0.1",
+    "port": 8081,
+    "hook": [
+        {
+            "name": "github",
+            "type": "github",
+            "path": "/josuke/github",
+            "secret": "8118eb0123456fed42ccab23b01edd55",
+            "deployment":
+            [
+                {
+                    "repo": "monkeydioude/josuke",
+                    "proj_dir": "josuke",
+                    "base_dir": "/home/mkd/Work/go/src/github.com/monkeydioude",
+                    "branches":
+                    [
+                        {
+                            "branch" :"master",
+                            "actions":
+                            [
+                                {
+                                    "action": "push",
+                                    "commands":
+                                    [
+                                        ["touch", "/tmp/salut"]
+                                    ]                        
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

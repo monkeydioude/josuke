@@ -1,8 +1,8 @@
 #!/bin/sh
 
-# Expecting optional BIN_IMAGE_NAME env var from Makefile
+# Expecting optional TEST_IMAGE_NAME env var from Makefile
 if [ -z $TEST_IMAGE_NAME ]; then
-    echo "[WARN] BIN_IMAGE_NAME not set. Using 'josuke' as default"
+    echo "[WARN] TEST_IMAGE_NAME not set. Using 'josuke-test:latest' as default"
     TEST_IMAGE_NAME=josuke-test:latest
 fi
 

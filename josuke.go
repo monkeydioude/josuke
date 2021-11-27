@@ -44,7 +44,6 @@ type Josuke struct {
 	LogLevelName string `json:"logLevel"`
 	LogLevel     LogLevel
 	Hooks        *[]*Hook `json:"hook"`
-	Deployment   *[]*Repo `json:"deployment"`
 	Host         string   `json:"host"`
 	Port         int      `json:"port"`
 	Cert         string   `json:"cert"`
@@ -107,7 +106,7 @@ func (j *Josuke) HandleHooks() {
 			log.Printf("[INFO] Gureto daze 8), handling %s hook %s\n", hh.Scm.Title, hh.Hook.Name)
 		}
 
-		if j.LogEnabled(DebugLevel) && nil != hh.Hook.Command && 0 > len(hh.Hook.Command) {
+		if j.LogEnabled(DebugLevel) && nil != hh.Hook.Command && len(hh.Hook.Command) > 0 {
 			log.Println("[DBG ] hook command: ", hh.Hook.Command)
 		}
 		http.HandleFunc(hook.Path, hh.Scm.Handler)
@@ -138,6 +137,7 @@ type Hook struct {
 	Type        string   `json:"type"`
 	Path        string   `json:"path"`
 	Secret      string   `json:"secret"`
+	Deployment  *[]*Repo `json:"deployment"`
 	SecretBytes []byte
 }
 

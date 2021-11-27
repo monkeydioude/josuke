@@ -12,7 +12,7 @@ install:
 start: build run
 
 build:
-	docker build -f build/Dockerfile -t $(BIN_IMAGE_NAME) .
+	docker build --target build -f build/Dockerfile -t $(BIN_IMAGE_NAME) .
 
 run:
 	@BIN_IMAGE_NAME=$(BIN_IMAGE_NAME) CONF_FILE=$(CONF_FILE) ./script/docker-run.sh

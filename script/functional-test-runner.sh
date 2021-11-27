@@ -12,12 +12,11 @@ fi
 funcTestImageName=$BIN_IMAGE_NAME-func-test:latest
 if [ -z $(docker images -q "$funcTestImageName") ]; then
     echo "[INFO] building $funcTestImageName image"
-    docker build -f build/Dockerfile -t "$funcTestImageName" .
+    docker build --target build -f build/Dockerfile -t "$funcTestImageName" .
 fi
 
 # looping over every test scripts in test/functional directory
-for ftest in test/functional/*; do
-    
+for ftest in test/functional/*.sh; do
     # stopping already running container since  each test
     # might require a different josuke config
     containerID=$(docker ps -qf ancestor="$funcTestImageName")
@@ -27,8 +26,8 @@ for ftest in test/functional/*; do
     fi
 
     # =.= zZZz let's not wake them up. Running tests silently
-    echo "[INFO] running $ftest test"
-    $ftest > /dev/null 2>&1
+    echo "[INFO] running '$ftest' test"
+    $ftest
 
     # test exited with a status = error
     if [ ! $? = 0 ]; then
@@ -38,3 +37,11 @@ for ftest in test/functional/*; do
 
     echo "[INFO] '$ftest' OK"
 done
+
+echo "[INFO] functional tests successful \o/"
+
+containerID=$(docker ps -qf ancestor="$funcTestImageName")
+if [ ! $containerID = "" ]; then
+    echo "[INFO] stopping remaining '$funcTestImageName' container '$containerID'"
+    docker stop $containerID > /dev/null
+fi

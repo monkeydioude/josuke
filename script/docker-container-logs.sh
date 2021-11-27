@@ -6,6 +6,6 @@ if [ -z $BIN_IMAGE_NAME ]; then
     BIN_IMAGE_NAME=josuke
 fi
 
-CONTAINER_ID=$(docker ps -aqf ancestor="$BIN_IMAGE_NAME" --no-trunc)
+CONTAINER_ID=$(docker ps -aqlf ancestor="$BIN_IMAGE_NAME" --no-trunc)
 
 sudo cat /var/lib/docker/containers/$CONTAINER_ID/$CONTAINER_ID-json.log
