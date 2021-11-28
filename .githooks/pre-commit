@@ -1,0 +1,24 @@
+#!/bin/sh
+
+echo "[INFO] now starting pre-commit hook"
+
+run_tests_with_docker() {
+    if [ -z $(command -v docker) ]; then
+        return 1
+    fi
+    echo "[INFO] running tests in docker container"
+    make test
+}
+
+run_tests() {
+    run_tests_with_docker
+    if [ $? = 1 ]; then
+        echo "[INFO] running tests locally"
+        make go_test
+    fi
+}
+
+run_tests
+if [ $? = 1 ]; then
+    exit 1
+fi

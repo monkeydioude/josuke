@@ -1,4 +1,4 @@
-FROM golang:1.15-alpine
+FROM golang:1.15-alpine as build
 WORKDIR /src
 COPY . .
 EXPOSE 8082
@@ -15,3 +15,8 @@ RUN apk add jq
 
 HEALTHCHECK --interval=5s --timeout=3s --start-period=5s --retries=3 CMD curl --fail http://localhost:$PORT/healthcheck || exit 1
 ENTRYPOINT DOCKER=1 /src/script/run.sh
+
+FROM build as test
+WORKDIR /src
+RUN apk add gcc g++ libc-dev
+ENTRYPOINT go test -v ./...
