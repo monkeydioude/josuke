@@ -16,7 +16,7 @@ if [ -z $(docker images -q "$funcTestImageName") ]; then
 fi
 
 # looping over every test scripts in test/functional directory
-for ftest in test/functional/*.sh; do
+for ftest in test/functional/test*.sh; do
     # stopping already running container since  each test
     # might require a different josuke config
     containerID=$(docker ps -qf ancestor="$funcTestImageName")

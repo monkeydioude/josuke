@@ -175,6 +175,9 @@ The **repository rules** objects are defined as such:
 
 See [testdata/](testdata/index.md).
 
+### Functional tests:
+Using `make ftest` will trigger `script/functional-test-runner.sh`. This script will run every script matching `test/functional/test*.sh` pattern.
+
 ### Build and run instructions:
 
 __With Golang__:
@@ -204,16 +207,19 @@ Or with Docker only:
 Once Josuke is running, healthcheck HTTP status is available at `/healthcheck`
 
 ## Makefile:
+- `install` (dev only): setup dev env such as git hooks
 - `stop`: stop josuke running docker container
 - `start`: build josuke docker image and run it
 - `restart`: `stop` + `start`
 - `run`: run a docker container using already built josuke image
 - `sr`: `stop` + `run`
 - `shell`: run a shell (/bin/sh) in a running josuke container
+- `test`: run unit tests inside a container
+- `ftest`: run functional tests
 - `bb`: rebuild josuke binary inside a running container
 - `logs`: read josuke's log file (/var/log/josuke) inside a running container
 - `offline_logs`: read logs of the lastet, running or not, josuke container from host's physical log files (/var/lig/docker/containers/$CONTAINER_ID/$CONTAINER_ID-json.log)
-- `attach`: attach a tty to a running container. Be advised that detaching the freshly attached tty might require to kill process
+- `attach`: attach a tty to a running container. Be advised that detaching the freshly attached tty might require to kill process. ちょっとダメね
 
 Default make rule is `start`
 
