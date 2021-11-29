@@ -1,6 +1,13 @@
 #!/bin/sh
-set -e
 set -a
+
+stopContainer() {
+    containerID=$(docker ps -qf ancestor="$BIN_IMAGE_NAME")
+    if [ ! $containerID = "" ]; then
+        echo "[INFO] stopping remaining '$BIN_IMAGE_NAME' container '$containerID'"
+        docker stop $containerID > /dev/null
+    fi
+}
 
 # Expecting optional BIN_IMAGE_NAME env var from Makefile
 if [ -z $BIN_IMAGE_NAME ]; then
@@ -9,19 +16,19 @@ if [ -z $BIN_IMAGE_NAME ]; then
 fi
 
 # Bulding docker image for functional tests
-funcTestImageName=$BIN_IMAGE_NAME-func-test:latest
-if [ -z $(docker images -q "$funcTestImageName") ]; then
-    echo "[INFO] building $funcTestImageName image"
-    docker build --target build -f build/Dockerfile -t "$funcTestImageName" .
+BIN_IMAGE_NAME=$BIN_IMAGE_NAME-func-test:latest
+if [ -z $(docker images -q "$BIN_IMAGE_NAME") ]; then
+    echo "[INFO] building $BIN_IMAGE_NAME image"
+    docker build --target build -f build/Dockerfile -t "$BIN_IMAGE_NAME" .
 fi
 
 # looping over every test scripts in test/functional directory
 for ftest in test/functional/test*.sh; do
     # stopping already running container since  each test
     # might require a different josuke config
-    containerID=$(docker ps -qf ancestor="$funcTestImageName")
+    containerID=$(docker ps -qf ancestor="$BIN_IMAGE_NAME")
     if [ ! $containerID = "" ]; then
-        echo "[INFO] stopping already running '$funcTestImageName' container '$containerID'"
+        echo "[INFO] stopping already running '$BIN_IMAGE_NAME' container '$containerID'"
         docker stop $containerID > /dev/null
     fi
 
@@ -29,9 +36,11 @@ for ftest in test/functional/test*.sh; do
     echo "[INFO] running '$ftest' test"
     $ftest
 
+    exitCode=$? 
     # test exited with a status = error
-    if [ ! $? = 0 ]; then
-        echo "[ERR ] '$ftest' returned '$?'"
+    if [ ! $exitCode = 0 ]; then
+        echo "[ERR ] '$ftest' returned '$exitCode'"
+        stopContainer
         exit 1
     fi
 
@@ -39,9 +48,4 @@ for ftest in test/functional/test*.sh; do
 done
 
 echo "[INFO] functional tests successful \o/"
-
-containerID=$(docker ps -qf ancestor="$funcTestImageName")
-if [ ! $containerID = "" ]; then
-    echo "[INFO] stopping remaining '$funcTestImageName' container '$containerID'"
-    docker stop $containerID > /dev/null
-fi
+stopContainer

@@ -171,6 +171,9 @@ func (hh *HookHandler) getHookActions(payload *Payload, payloadPath string) []Ho
 	if hh.Josuke.LogEnabled(TraceLevel) {
 		log.Println("[TRAC] hook action from deployment")
 	}
+	if hh.Hook.Deployment == nil {
+		return hookActions
+	}
 	action, info := payload.getDeployAction(hh.Hook.Deployment, payloadPath)
 
 	// No deployment found

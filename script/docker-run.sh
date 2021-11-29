@@ -61,3 +61,4 @@ if [ $? = 1 ]; then
 fi
 
 echo "[INFO] container running on http://localhost:$PORT"
+echo '[INFO] live logs with `make logs` (see `make help`)'

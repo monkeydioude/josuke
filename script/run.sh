@@ -1,5 +1,7 @@
 #!/bin/sh
 
+# This script build and run josuke binary
+
 BASE_PATH=$(pwd)/
 
 if [ ! -z $DOCKER ]; then
