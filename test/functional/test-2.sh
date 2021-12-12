@@ -11,7 +11,7 @@ docker exec $containerID /src/testdata/send-payload "/src/$confFile" github "/sr
 docker logs $containerID
 # should expect this file.
 # this is specified by `confFile`, "command" field inside "hook"
-logFileSize=$(docker exec $containerID stat -c %s /tmp/hook.log)
+logFileSize=$(docker exec $containerID stat -c %s /tmp/testfile)
 
 if [ $logFileSize -le 1 ]; then
     exit 1

@@ -207,6 +207,7 @@ Or with Docker only:
 Once Josuke is running, healthcheck HTTP status is available at `/healthcheck`
 
 ## Makefile:
+- `help`: display make actions help descriptions
 - `install` (dev only): setup dev env such as git hooks
 - `stop`: stop josuke running docker container
 - `start`: build josuke docker image and run it

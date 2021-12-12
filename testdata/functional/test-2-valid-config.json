@@ -2,7 +2,7 @@
     "logLevel": "INFO",
     "host": "127.0.0.1",
     "port": 8081,
-    "store": "/tmp/payload",
+    "store": "/tmp",
     "hook": [
         {
             "name": "github",
@@ -10,8 +10,9 @@
             "path": "/josuke/github",
             "secret": "8118eb0123456fed42ccab23b01edd55",
             "command": [
-                "/src/testdata/hook.sh",
-                "%payload_path%"
+                "cp",
+                "%payload_path%",
+                "/tmp/testfile"
             ]
         }
     ]
