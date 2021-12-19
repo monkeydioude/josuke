@@ -41,8 +41,8 @@ func parseLogLevel(value string) (LogLevel, bool) {
 // Josuke is the main object, that contains the HTTP server configuration
 // and the hook definitions.
 type Josuke struct {
-	LogLevelName string `json:"logLevel"`
 	LogLevel     LogLevel
+	LogLevelName string   `json:"logLevel"`
 	Hooks        *[]*Hook `json:"hook"`
 	Host         string   `json:"host"`
 	Port         int      `json:"port"`

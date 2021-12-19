@@ -3,7 +3,7 @@ set -a
 
 stopContainer() {
     containerID=$(docker ps -qf ancestor="$BIN_IMAGE_NAME")
-    if [ ! $containerID = "" ]; then
+    if [ -n "$containerID" ]; then
         echo "[INFO] stopping remaining '$BIN_IMAGE_NAME' container '$containerID'"
         docker stop $containerID > /dev/null
     fi
@@ -27,7 +27,7 @@ for ftest in test/functional/test*.sh; do
     # stopping already running container since  each test
     # might require a different josuke config
     containerID=$(docker ps -qf ancestor="$BIN_IMAGE_NAME")
-    if [ ! $containerID = "" ]; then
+    if [ -n "$containerID" ]; then
         echo "[INFO] stopping already running '$BIN_IMAGE_NAME' container '$containerID'"
         docker stop $containerID > /dev/null
     fi

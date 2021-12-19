@@ -6,7 +6,7 @@ u_ok_jojo() {
     sleep $sleepDuration
     for d in `seq 1 $maxIt`; do 
         containerID=$(docker ps -qf ancestor="$BIN_IMAGE_NAME")
-        if [ ! $containerID = "" ] && [ $(docker inspect --format="{{.State.Health.Status}}" $containerID) = "healthy" ]; then
+        if [ -n "$containerID" ] && [ $(docker inspect --format="{{.State.Health.Status}}" $containerID) = "healthy" ]; then
             return 0
         else
             printf "[WARN] container did not start yet. Sleeping for "$sleepDuration"s \n"
@@ -32,7 +32,7 @@ fi
 
 # Checking image already has a running container
 CONTAINER_ID=$(docker ps -qf ancestor="$BIN_IMAGE_NAME")
-if [ ! $CONTAINER_ID = "" ]; then
+if [ -n "$CONTAINER_ID" ]; then
     echo "[ERR ] container with ID '$CONTAINER_ID' already running for image '$BIN_IMAGE_NAME'"
     exit 1
 fi
@@ -55,7 +55,7 @@ echo "[INFO] container running with untruncated ID '$containerID'"
 
 # checking container status
 u_ok_jojo
-if [ $? = 1 ]; then
+if [ ! $? = 0 ]; then
     echo "[ERR ] container did not start properly (not running or unhealthy)"
     exit 1
 fi
