@@ -1,5 +1,7 @@
 #!/bin/sh
 
+# This script build and run josuke binary
+
 BASE_PATH=$(pwd)/
 
 if [ ! -z $DOCKER ]; then
@@ -13,4 +15,4 @@ fi
 
 cd $BASE_PATH"bin/josuke" && go build -o $GOPATH/josuke
 
-$GOPATH/josuke -c $BASE_PATH$CONF_FILE
+$GOPATH/josuke -c $BASE_PATH$CONF_FILE 2> /var/log/josuke

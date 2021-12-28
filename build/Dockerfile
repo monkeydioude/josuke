@@ -1,22 +1,16 @@
-FROM golang:1.15-alpine as build
+## build image ##
+FROM golang:1.15-alpine AS build
 WORKDIR /src
-COPY . .
 EXPOSE 8082
-
+RUN apk add openrc curl jq openssl
 # Make alpine's sh source this shell profile file on opening a shell
 ENV ENV="/etc/profile"
-
-RUN go build -o /out/josuke ./bin/josuke
-RUN apk add curl
 RUN echo 'alias l="ls -la"' >> /etc/profile.d/aliases.sh
-# The following RUN command is sponsored by "The Linux Order" and
-# its most proficient adept Pyxide.
-RUN apk add jq
+HEALTHCHECK --interval=3s --timeout=3s --start-period=1s --retries=3 CMD curl --fail http://localhost:$PORT/healthcheck || exit 1
+ENTRYPOINT DOCKER=1 go build -o /out/josuke ./bin/josuke && /src/script/run.sh
 
-HEALTHCHECK --interval=5s --timeout=3s --start-period=5s --retries=3 CMD curl --fail http://localhost:$PORT/healthcheck || exit 1
-ENTRYPOINT DOCKER=1 /src/script/run.sh
-
-FROM build as test
+## test image ##
+FROM build AS test
 WORKDIR /src
 RUN apk add gcc g++ libc-dev
 ENTRYPOINT go test -v ./...

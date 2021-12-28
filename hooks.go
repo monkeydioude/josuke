@@ -122,39 +122,72 @@ func (hh *HookHandler) GenericRequest(
 
 	payload.Action = scmEvent
 
-	action, info := hh.getHookAction(payload, payloadPath)
-	if action == nil {
+	hookActions := hh.getHookActions(payload, payloadPath)
+	if len(hookActions) == 0 {
 		log.Println("[ERR ] Could not retrieve any action")
 		return
 	}
 
-	if err := action.execute(info); err != nil {
-		log.Printf("[ERR ] Could not execute action. Reason: %s", err)
+	for _, ha := range hookActions {
+		if ha.Action == nil {
+			continue
+		}
+		if err := ha.Action.execute(ha.Info); err != nil {
+			log.Printf("[ERR ] Could not execute action. Reason: %s", err)
+		}
 	}
 }
 
+type HookAction struct {
+	Action *Action
+	Info   *Info
+}
+
 // Returns either the hook command if present, or a deployment command.
-func (hh *HookHandler) getHookAction(payload *Payload, payloadPath string) (*Action, *Info) {
-	if hh.Hook.Command == nil || len(hh.Hook.Command) == 0 {
+func (hh *HookHandler) getHookActions(payload *Payload, payloadPath string) []HookAction {
+	var hookActions []HookAction
+
+	// hook action gets triggered first before deploy
+	if hh.Hook.Command != nil && len(hh.Hook.Command) > 0 {
 		if hh.Josuke.LogEnabled(TraceLevel) {
-			log.Println("[TRAC] hook action from deployment")
+			log.Println("[TRAC] hook action")
 		}
-		return payload.getDeployAction(hh.Josuke.Deployment, payloadPath)
-	}
+		hookActions = append(
+			hookActions,
+			HookAction{
+				Action: &Action{
+					Action:   "hook",
+					Commands: [][]string{hh.Hook.Command},
+				},
+				Info: &Info{
+					BaseDir:     "",
+					ProjDir:     "",
+					HtmlUrl:     "",
+					PayloadPath: payloadPath,
+				},
+			})
 
+	}
 	if hh.Josuke.LogEnabled(TraceLevel) {
-		log.Println("[TRAC] hook action")
+		log.Println("[TRAC] hook action from deployment")
+	}
+	if hh.Hook.Deployment == nil {
+		return hookActions
+	}
+	action, info := payload.getDeployAction(hh.Hook.Deployment, payloadPath)
+
+	// No deployment found
+	if action == nil {
+		return hookActions
 	}
 
-	return &Action{
-			Action:   "hook",
-			Commands: [][]string{hh.Hook.Command},
-		}, &Info{
-			BaseDir:     "",
-			ProjDir:     "",
-			HtmlUrl:     "",
-			PayloadPath: payloadPath,
-		}
+	// deployment action gets triggered second after hook action
+	return append(
+		hookActions,
+		HookAction{
+			Action: action,
+			Info:   info,
+		})
 }
 
 // GogsRequest handles gogs' webhook triggers
@@ -186,7 +219,7 @@ func (hh *HookHandler) BitbucketRequest(rw http.ResponseWriter, req *http.Reques
 
 	// TODO : implement payload path for BitbucketRequest
 	payloadPath := ""
-	action, info := payload.getDeployAction(hh.Josuke.Deployment, payloadPath)
+	action, info := payload.getDeployAction(hh.Hook.Deployment, payloadPath)
 	if action == nil {
 		log.Println("[ERR ] Could not retrieve any action")
 		return
@@ -228,7 +261,7 @@ func parseScmType(hh *HookHandler, t string) *Scm {
 	return nil
 }
 
-// NewHookHandler constructs a hook handler with josuke and a hook definition. 
+// NewHookHandler constructs a hook handler with josuke and a hook definition.
 func NewHookHandler(j *Josuke, h *Hook) (*HookHandler, error) {
 	hh := &HookHandler{
 		Josuke: j,
