@@ -79,8 +79,20 @@ func (hh *HookHandler) GenericRequest(
 
 	if hh.Hook.SecretBytes != nil {
 		requestSignature := req.Header.Get(signatureHeaderName)
+		digestName := "sha256"
 		if requestSignature == "" {
 			log.Printf("[ERR ] %s was empty in headers\n", signatureHeaderName)
+			return
+		}
+		equalIndex := strings.Index(requestSignature, "=")
+		if equalIndex > -1 {
+			digestName = requestSignature[0: equalIndex]
+			requestSignature = requestSignature[equalIndex + 1: len(requestSignature)]
+		}
+
+		// TODO one hash sha256 as of now. Could have a dictionary: digest name to digest method.
+		if digestName != "sha256" {
+			log.Printf("[ERR ] payload signature digest not handled: %s\n", digestName)
 			return
 		}
 
