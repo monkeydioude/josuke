@@ -86,8 +86,8 @@ func (hh *HookHandler) GenericRequest(
 		}
 		equalIndex := strings.Index(requestSignature, "=")
 		if equalIndex > -1 {
-			digestName = requestSignature[0: equalIndex]
-			requestSignature = requestSignature[equalIndex + 1: len(requestSignature)]
+			digestName = requestSignature[: equalIndex]
+			requestSignature = requestSignature[equalIndex + 1:]
 		}
 
 		// TODO one hash sha256 as of now. Could have a dictionary: digest name to digest method.
