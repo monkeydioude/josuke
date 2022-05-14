@@ -4,9 +4,11 @@ usage() {
 	cat<<EOF
    Sends a payload to Josuke server.
 Usage:
- send-payload <JSON server conf> <hook name> <payload file>
+ send-payload <JSON server conf> <hook name> <payload file> [--sign-prefix]
  send-payload <JSON server conf> --url : prints the server base URL
  send-payload --help : prints this help.
+Options:
+ --sign-prefix: adds the digest in front of the signature, for instance: sha256=...
 EOF
 }
 if test 0 = $# || test '--help' = "$1"; then usage; exit 0; fi
@@ -32,9 +34,20 @@ getServerUrlFromConf() {
 	printf '%s' "$protocol://$host:$port"
 }
 
+digest='sha256'
+
 serverConf="$1"
 hookName="$2"
 payloadFile="$3"
+opt4="$4"
+
+#$dbg && printf '#  opt 4   [%s]\n' "$opt4">&2
+
+if test '--sign-prefix' = "$opt4"; then
+	signPrefix="$digest="
+else
+	signPrefix=''
+fi
 
 if test -z "$serverConf"; then printf 'send-payload: missing configuration\n'>&2; exit 1; fi
 if test '--url' = "$hookName"; then
@@ -88,13 +101,16 @@ if $dbg; then {
 	printf '#  scm type       %s\n' "$scmType"
 	printf '#  hook name      %s\n' "$hookName"
 	printf '#  hook secret    %s\n' "$hookSecret"
+	if test -n "$signPrefix"; then
+		printf '#  sign prefix    %s\n' "$signPrefix"
+	fi
 }>&2; fi
 #exit 0
 
 # - payload file
 # - secret
 signData() {
-	openssl dgst -sha256 -hmac "$2" "$1" | sed -E 's/^.[^=]+= (.+)$/\1/g'
+	openssl dgst "-$digest" -hmac "$2" "$1" | sed -E 's/^.[^=]+= (.+)$/\1/g'
 }
 
 payload="$(cat "$payloadFile")"
@@ -130,8 +146,10 @@ if $dbg && test -n "$signature"; then {
 	printf '#  signature      %s\n' "$signature"
 }>&2; fi
 
+#printf 'DEV EXIT\n'>&2; exit 0
+
 curl "${serverUrl}$hookPath" \
   -H 'Content-Type: application/json' \
   -H "$eventHeader: push" \
-  -H "$signHeader: $signature" \
+  -H "$signHeader: ${signPrefix}$signature" \
   --data-raw "$payload"
