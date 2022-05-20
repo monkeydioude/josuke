@@ -176,6 +176,7 @@ func (hh *HookHandler) getHookActions(payload *Payload, payloadPath string) []Ho
 					ProjDir:     "",
 					HtmlUrl:     "",
 					PayloadPath: payloadPath,
+					PayloadEvent: payload.Action,
 				},
 			})
 
@@ -186,7 +187,7 @@ func (hh *HookHandler) getHookActions(payload *Payload, payloadPath string) []Ho
 	if hh.Hook.Deployment == nil {
 		return hookActions
 	}
-	action, info := payload.getDeployAction(hh.Hook.Deployment, payloadPath)
+	action, info := payload.getDeployAction(hh.Hook.Deployment, payloadPath, payload.Action)
 
 	// No deployment found
 	if action == nil {
@@ -225,13 +226,26 @@ func (hh *HookHandler) GithubRequest(rw http.ResponseWriter, req *http.Request) 
 // BitbucketRequest handles github's webhook triggers
 func (hh *HookHandler) BitbucketRequest(rw http.ResponseWriter, req *http.Request) {
 	log.Printf("[INFO] Caught call from BitBucket %+v\n", req.URL)
-	payload := bitbucketToPayload(req.Body)
+
+	eventHeaderName := "x-event-key"
+
+	scmEvent := req.Header.Get(eventHeaderName)
+	if scmEvent == "" {
+		log.Printf("[ERR ] %s was empty in headers\n", eventHeaderName)
+		return
+	}
 
 	defer req.Body.Close()
 
+	payload, err := bitbucketToPayload(req.Body, scmEvent)
+	if err != nil {
+		log.Printf("[ERR ] Could not read body. Reason: %s", err)
+		return
+	}
+
 	// TODO : implement payload path for BitbucketRequest
 	payloadPath := ""
-	action, info := payload.getDeployAction(hh.Hook.Deployment, payloadPath)
+	action, info := payload.getDeployAction(hh.Hook.Deployment, payloadPath, payload.Action)
 	if action == nil {
 		log.Println("[ERR ] Could not retrieve any action")
 		return

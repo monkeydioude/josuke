@@ -126,12 +126,15 @@ var keyholders = map[string]func(*Info) string{
 	"%payload_path%": func(i *Info) string {
 		return i.PayloadPath
 	},
+	"%payload_event%": func(i *Info) string {
+		return i.PayloadEvent
+	},
 }
 
 // A Hook maps HTTP requests to local commands.
 type Hook struct {
 	// Optional command, takes precedence over deployment commands if set.
-	// Only %payload_path% placeholder is available.
+	// Only %payload_path% and %payload_event% placeholders are available.
 	Command     []string `json:"command"`
 	Name        string   `json:"name"`
 	Type        string   `json:"type"`
@@ -162,10 +165,11 @@ func (r Repo) matches(trial string) bool {
 
 // Info contains various data about directory to deploy to and git's repo url
 type Info struct {
-	BaseDir     string
-	ProjDir     string
-	HtmlUrl     string
-	PayloadPath string
+	BaseDir      string
+	ProjDir      string
+	HtmlUrl      string
+	PayloadPath  string
+	PayloadEvent string
 }
 
 // Branch mirrors config's branch section, containing branch Name & Actions linked to it

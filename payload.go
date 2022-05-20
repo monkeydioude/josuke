@@ -33,7 +33,7 @@ func (p *Payload) getRepo(deployment *[]*Repo) *Repo {
 }
 
 // Process of retrieving deploy information from github payload
-func (p *Payload) getDeployAction(deployment *[]*Repo, payloadPath string) (*Action, *Info) {
+func (p *Payload) getDeployAction(deployment *[]*Repo, payloadPath string, payloadEvent string) (*Action, *Info) {
 	repo := p.getRepo(deployment)
 	if repo == nil {
 		log.Println("[WARN] Could not match any repo in config file. We'll just do nothing.")
@@ -55,6 +55,7 @@ func (p *Payload) getDeployAction(deployment *[]*Repo, payloadPath string) (*Act
 		ProjDir: repo.ProjDir,
 		HtmlUrl: p.Repository.HtmlUrl,
 		PayloadPath: payloadPath,
+		PayloadEvent: payloadEvent,
 	}
 }
 

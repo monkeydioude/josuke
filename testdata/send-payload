@@ -119,15 +119,18 @@ payload="$(cat "$payloadFile")"
 case "$scmType" in
 	github)
 		eventHeader='X-Github-Event'
+		eventHeaderValue='push'
 		signHeader='X-Hub-Signature-256'
 		signType='hmac256';;
 	gogs)
 		eventHeader='X-Gogs-Event'
+		eventHeaderValue='push'
 		signHeader='X-Gogs-Signature'
 		signType='hmac256';;
 	bitbucket)
-		eventHeader='X-Dummy1'
-		signHeader='X-Dummy2'
+		eventHeader='X-Event-Key'
+		eventHeaderValue='repo:push'
+		signHeader='X-Dummy-Signature'
 		signType='';;
 	*) printf 'send-payload: unexpected scm type: %s\n' "$scmType">&2
 	exit 1;;
@@ -150,6 +153,6 @@ if $dbg && test -n "$signature"; then {
 
 curl "${serverUrl}$hookPath" \
   -H 'Content-Type: application/json' \
-  -H "$eventHeader: push" \
+  -H "$eventHeader: $eventHeaderValue" \
   -H "$signHeader: ${signPrefix}$signature" \
   --data-raw "$payload"

@@ -2,9 +2,9 @@ package josuke
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
-	"log"
 )
 
 // Bitbucket push type and repository.
@@ -27,27 +27,37 @@ type Bitbucket struct {
 	} `json:"repository"`
 }
 
-func bitbucketToPayload(r io.Reader) *Payload {
+func bitbucketToPayload(r io.Reader, payloadEvent string) (*Payload, error) {
 	var b Bitbucket
 	err := json.NewDecoder(r).Decode(&b)
 
 	if err != nil {
-		log.Printf("[ERR ] %s", err)
-		return nil
+		return nil, err
 	}
 
-	if len(b.Push.Changes) == 0 {
-		log.Println("[ERR ] Could not decode body into Payload")
-		return nil
+	// FIXME : remove this event name modification in future realease,
+	// made to avoid breaking change on 2022-05-20.
+	if payloadEvent == "repo:push" {
+		payloadEvent = "push"
+	}
+
+	var ref string
+	if payloadEvent == "push" {
+		if len(b.Push.Changes) == 0 {
+			return nil, errors.New("No push changes in payload for BitBucket push event")
+		}
+		ref = fmt.Sprintf("refs/heads/%s", b.Push.Changes[0].New.Name)
+	} else {
+		ref = ""
 	}
 
 	return &Payload{
-		Ref:     fmt.Sprintf("refs/heads/%s", b.Push.Changes[0].New.Name),
-		Action:  "push",
+		Ref:     ref,
+		Action:  payloadEvent,
 		HtmlUrl: b.Repository.Links.HTML.Href,
 		Repository: Repository{
 			Name:    b.Repository.Fullname,
 			HtmlUrl: b.Repository.Links.HTML.Href,
 		},
-	}
+	}, nil
 }
