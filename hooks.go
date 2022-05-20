@@ -12,8 +12,8 @@ import (
 	"time"
 )
 
-// Scm defines a Source Code Management (Gogs, GitHub, BitBucket).
-type Scm struct {
+// HookDef defines a type of hook, usually a Source Code Management (Gogs, GitHub, BitBucket).
+type HookDef struct {
 	Name    string
 	Title   string
 	Handler func(http.ResponseWriter, *http.Request)
@@ -48,11 +48,27 @@ func randomString(len int) string {
 	return string(bytes)
 }
 
-// HookHandler contains the hook, the SCM and the HTTP response handler.
+func storePayload(payloadContent string, hh *HookHandler) (string, error) {
+	if hh.Josuke.Store == "" {
+		return "", nil
+	}
+
+	t := time.Now().UTC()
+	dt := strings.ReplaceAll(t.Format(time.RFC3339), ":", "")
+	payloadPath := hh.Josuke.Store + "/" + hh.Hook.Name + "." + dt + "." + randomString(6) + ".json"
+	err := ioutil.WriteFile(payloadPath, []byte(payloadContent), 0664)
+	if err != nil {
+		return "", fmt.Errorf("cannot write the payload: %s", err)
+	}
+	log.Printf("[INFO] store payload to %s\n", payloadPath)
+	return payloadPath, nil
+}
+
+// HookHandler contains the hook definition, the reified hook and the HTTP response handler.
 type HookHandler struct {
-	Josuke *Josuke
-	Hook   *Hook
-	Scm    *Scm
+	Josuke  *Josuke
+	Hook    *Hook
+	HookDef *HookDef
 }
 
 // GenericRequest checks request HMAC 256 from a HTTP header and runs the action.
@@ -65,8 +81,8 @@ func (hh *HookHandler) GenericRequest(
 	log.Printf("[INFO] Caught call from %s %+v\n", hh.Hook.Type, req.URL)
 	defer req.Body.Close()
 
-	scmEvent := req.Header.Get(eventHeaderName)
-	if scmEvent == "" {
+	hookEvent := req.Header.Get(eventHeaderName)
+	if hookEvent == "" {
 		log.Printf("[ERR ] %s was empty in headers\n", eventHeaderName)
 		return
 	}
@@ -107,32 +123,20 @@ func (hh *HookHandler) GenericRequest(
 		}
 	}
 
-	bodyReader := ioutil.NopCloser(strings.NewReader(payloadContent))
-
-	var payloadPath string
-	if hh.Josuke.Store != "" {
-
-		t := time.Now().UTC()
-		dt := strings.ReplaceAll(t.Format(time.RFC3339), ":", "")
-		payloadPath = hh.Josuke.Store + "/" + hh.Hook.Name + "." + dt + "." + randomString(6) + ".json"
-		err = ioutil.WriteFile(payloadPath, []byte(payloadContent), 0664)
-		if err != nil {
-			log.Printf("[ERR ] cannot create the payload file: %s", err)
-			return
-		}
-		log.Printf("[INFO] store payload to %s\n", payloadPath)
-	} else {
-		payloadPath = ""
+	payloadPath, err := storePayload(payloadContent, hh)
+	if err !=  nil {
+		log.Printf("[ERR ] cannot store the payload: %s", err)
 	}
 
+	bodyReader := ioutil.NopCloser(strings.NewReader(payloadContent))
 	payload, err := fetchPayload(bodyReader)
 
 	if err != nil {
-		log.Printf("[ERR ] Could not fetch payload. Reason: %s", err)
+		log.Printf("[ERR ] could not fetch payload: %s", err)
 		return
 	}
 
-	payload.Action = scmEvent
+	payload.Action = hookEvent
 
 	hookActions := hh.getHookActions(payload, payloadPath)
 	if len(hookActions) == 0 {
@@ -175,6 +179,7 @@ func (hh *HookHandler) getHookActions(payload *Payload, payloadPath string) []Ho
 					BaseDir:     "",
 					ProjDir:     "",
 					HtmlUrl:     "",
+					PayloadHook: hh.Hook.Name,
 					PayloadPath: payloadPath,
 					PayloadEvent: payload.Action,
 				},
@@ -187,7 +192,7 @@ func (hh *HookHandler) getHookActions(payload *Payload, payloadPath string) []Ho
 	if hh.Hook.Deployment == nil {
 		return hookActions
 	}
-	action, info := payload.getDeployAction(hh.Hook.Deployment, payloadPath, payload.Action)
+	action, info := payload.getDeployAction(hh.Hook.Deployment, payloadPath, hh.Hook.Name, payload.Action)
 
 	// No deployment found
 	if action == nil {
@@ -201,6 +206,15 @@ func (hh *HookHandler) getHookActions(payload *Payload, payloadPath string) []Ho
 			Action: action,
 			Info:   info,
 		})
+}
+
+// WebhookRequest handles gogs' webhook triggers
+func (hh *HookHandler) WebhookRequest(rw http.ResponseWriter, req *http.Request) {
+
+	eventHeaderName := "x-webhook-event"
+	signatureHeaderName := "x-webhook-signature"
+
+	hh.GenericRequest(rw, req, eventHeaderName, signatureHeaderName)
 }
 
 // GogsRequest handles gogs' webhook triggers
@@ -229,15 +243,15 @@ func (hh *HookHandler) BitbucketRequest(rw http.ResponseWriter, req *http.Reques
 
 	eventHeaderName := "x-event-key"
 
-	scmEvent := req.Header.Get(eventHeaderName)
-	if scmEvent == "" {
+	hookEvent := req.Header.Get(eventHeaderName)
+	if hookEvent == "" {
 		log.Printf("[ERR ] %s was empty in headers\n", eventHeaderName)
 		return
 	}
 
 	defer req.Body.Close()
 
-	payload, err := bitbucketToPayload(req.Body, scmEvent)
+	payload, err := bitbucketToPayload(req.Body, hookEvent)
 	if err != nil {
 		log.Printf("[ERR ] Could not read body. Reason: %s", err)
 		return
@@ -245,7 +259,7 @@ func (hh *HookHandler) BitbucketRequest(rw http.ResponseWriter, req *http.Reques
 
 	// TODO : implement payload path for BitbucketRequest
 	payloadPath := ""
-	action, info := payload.getDeployAction(hh.Hook.Deployment, payloadPath, payload.Action)
+	action, info := payload.getDeployAction(hh.Hook.Deployment, payloadPath, hh.Hook.Name, payload.Action)
 	if action == nil {
 		log.Println("[ERR ] Could not retrieve any action")
 		return
@@ -256,32 +270,39 @@ func (hh *HookHandler) BitbucketRequest(rw http.ResponseWriter, req *http.Reques
 	}
 }
 
-var type2scm = map[string]func(hh *HookHandler) *Scm{
-	"bitbucket": func(hh *HookHandler) *Scm {
-		return &Scm{
+var type2hookDef = map[string]func(hh *HookHandler) *HookDef{
+	"bitbucket": func(hh *HookHandler) *HookDef {
+		return &HookDef{
 			Name:    "bitbucket",
 			Title:   "Bitbucket",
 			Handler: hh.BitbucketRequest,
 		}
 	},
-	"github": func(hh *HookHandler) *Scm {
-		return &Scm{
+	"github": func(hh *HookHandler) *HookDef {
+		return &HookDef{
 			Name:    "github",
 			Title:   "GitHub",
 			Handler: hh.GithubRequest,
 		}
 	},
-	"gogs": func(hh *HookHandler) *Scm {
-		return &Scm{
+	"gogs": func(hh *HookHandler) *HookDef {
+		return &HookDef{
 			Name:    "gogs",
 			Title:   "Gogs",
 			Handler: hh.GogsRequest,
 		}
 	},
+	"webhook": func(hh *HookHandler) *HookDef {
+		return &HookDef{
+			Name:    "webhook",
+			Title:   "Webhook",
+			Handler: hh.WebhookRequest,
+		}
+	},
 }
 
-func parseScmType(hh *HookHandler, t string) *Scm {
-	if fun, ok := type2scm[t]; ok {
+func parseHookDef(hh *HookHandler, t string) *HookDef {
+	if fun, ok := type2hookDef[t]; ok {
 		return fun(hh)
 	}
 	return nil
@@ -293,10 +314,10 @@ func NewHookHandler(j *Josuke, h *Hook) (*HookHandler, error) {
 		Josuke: j,
 		Hook:   h,
 	}
-	scm := parseScmType(hh, h.Type)
-	if nil == scm {
+	hookDef := parseHookDef(hh, h.Type)
+	if nil == hookDef {
 		return nil, fmt.Errorf("oh, my, god ! Josuke does not know this type of hook: %s. See README.md for help", h.Type)
 	}
-	hh.Scm = scm
+	hh.HookDef = hookDef
 	return hh, nil
 }

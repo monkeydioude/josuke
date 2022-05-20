@@ -35,7 +35,8 @@ Example of a classic config.json:
             "command": [
                 "/home/mkd/Work/josuke/script/hook",
                 "%payload_path%",
-                "%payload_event%"
+                "%payload_event%",
+                "%payload_hook%"
             ]
         },
         {
@@ -118,7 +119,7 @@ openssl req -x509 -newkey rsa:4096 -nodes \
 - `type`: SCM type, currently "gogs", "github" or "bitbucket".
 - `path`: local web path. This path must be specified in the SCM webhook’s parameters.
 - `secret`: signs the payload for Gogs and Github. *Optional, but strongly recommended for security purpose.* If not set, anybody can fake a payload on your webhook endpoint.
-- `command`: optional command, takes precedence over the deployment commands if set. It is run at each valid request. *Only the `%payload_path%` and `%payload_event%` placeholders are available in this hook scope.*
+- `command`: optional command, takes precedence over the deployment commands if set. It is run at each valid request. *Only the `%payload_path%`, `%payload_hook%` and `%payload_event%` placeholders are available in this hook scope.*
 
 There are three types of hooks:
 - `gogs`
@@ -133,7 +134,8 @@ Run a shell script `/home/me/josuke/script/hook` with the payload path and event
 "command": [
 	"/home/me/josuke/script/hook",
 	"%payload_path%",
-	"%payload_event%"
+	"%payload_event%",
+	"%payload_hook%"
 ]
 ```
 
@@ -144,7 +146,8 @@ On Windows, use the shell that comes with Git Bash for instance.
 	"C:/Users/me/AppData/Local/Programs/Git/bin/sh.exe",
 	"C:/Users/me/josuke/script/hook",
 	"%payload_path%",
-	"%payload_event%"
+	"%payload_event%",
+	"%payload_hook%"
 ]
 ```
 
@@ -181,6 +184,7 @@ The **repository rules** objects are defined as such:
 - `%base_dir%`: referring to "base_dir" set in config, must be defined by `base_dir` of each `deployment`
 - `%proj_dir%`: referring to "proj_dir" set in config, must be defined by `proj_dir` of each `deployment`
 - `%html_url%`: retrieved from gogs/github/bitbucket's payload informations, html url of your repo
+- `%payload_hook%`: name of the hook that received the payload (`hook[<num>].name` in the configuration).
 - `%payload_path%`: path to the payload, available if enabled with `store` in the configuration. Otherwise, empty.
 - `%payload_event%`: content of the event request header, be it `x-gogs-event`, `x-github-event`, `x-key-event`. It contains the webhook event, `push` for instance. If the event header is absent, it is empty.
 

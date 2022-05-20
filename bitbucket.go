@@ -27,7 +27,7 @@ type Bitbucket struct {
 	} `json:"repository"`
 }
 
-func bitbucketToPayload(r io.Reader, payloadEvent string) (*Payload, error) {
+func bitbucketToPayload(r io.Reader, hookEvent string) (*Payload, error) {
 	var b Bitbucket
 	err := json.NewDecoder(r).Decode(&b)
 
@@ -37,12 +37,12 @@ func bitbucketToPayload(r io.Reader, payloadEvent string) (*Payload, error) {
 
 	// FIXME : remove this event name modification in future realease,
 	// made to avoid breaking change on 2022-05-20.
-	if payloadEvent == "repo:push" {
-		payloadEvent = "push"
+	if hookEvent == "repo:push" {
+		hookEvent = "push"
 	}
 
 	var ref string
-	if payloadEvent == "push" {
+	if hookEvent == "push" {
 		if len(b.Push.Changes) == 0 {
 			return nil, errors.New("No push changes in payload for BitBucket push event")
 		}
@@ -53,7 +53,7 @@ func bitbucketToPayload(r io.Reader, payloadEvent string) (*Payload, error) {
 
 	return &Payload{
 		Ref:     ref,
-		Action:  payloadEvent,
+		Action:  hookEvent,
 		HtmlUrl: b.Repository.Links.HTML.Href,
 		Repository: Repository{
 			Name:    b.Repository.Fullname,

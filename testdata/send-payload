@@ -1,14 +1,24 @@
 #!/bin/sh
 set -e
+dbg='false'
+
 usage() {
 	cat<<EOF
    Sends a payload to Josuke server.
 Usage:
- send-payload <JSON server conf> <hook name> <payload file> [--sign-prefix]
- send-payload <JSON server conf> --url : prints the server base URL
+ send-payload <JSON server conf> <hook name> <payload file> [options]
+ send-payload <JSON server conf> -a url : prints the server base URL
  send-payload --help : prints this help.
 Options:
- --sign-prefix: adds the digest in front of the signature, for instance: sha256=...
+ -a|--action: sets the action
+   - send: sends a payload
+   - url: prints the server base URL.
+ --event <name>: sets the event in the HTTP request.
+ --digest: sets the digest. Needs to exist in openssl: openssl dgst "-{digest}".
+ --sign-prefix <true|false>: adds the digest in front of the signature, for instance: sha256=...
+ --help: prints this help and exits.
+ --test: prints only statements, does nothing.
+ --debug: prints debug statements.
 EOF
 }
 if test 0 = $# || test '--help' = "$1"; then usage; exit 0; fi
@@ -16,9 +26,41 @@ if test 0 = $# || test '--help' = "$1"; then usage; exit 0; fi
 # Requires jq https://stedolan.github.io/jq/
 jqExe='jq'
 #jqExe='/p/dev/app/jq/jq-1.6-win32.exe'
-dbg='false'
-#dbg='true'
 
+action='send'
+digest='sha256'
+signPrefixEnabled='false'
+eventHeaderValue=''
+
+
+testMode='false'
+optIndex=0
+while test $# -gt 0; do
+	case "$1" in
+		-a|--action)   shift; action="$1";;
+		--digest)      shift; digest="$1";;
+		--event)       shift; eventHeaderValue="$1";;
+		--sign-prefix) shift; if test 'true' = "$1"; then
+			signPrefixEnabled='true'; else signPrefixEnabled='false'; fi;;
+		--help)     usage; exit 0;;
+		--test)     testMode='true';;
+		--debug)    dbg='true';;
+		-*) printf 'send-payload: unknown option: %s\n' "$1">&2; exit 1;;
+		*) case "$optIndex" in
+				0) serverConf="$1";;
+				1) hookName="$1";;
+				2) payloadFile="$1";;
+				*) printf 'send-payload: unknown option: %s\n' "$1">&2; exit 1;;
+			esac
+			optIndex=$(( optIndex + 1 ));;
+		esac
+	shift
+done
+
+case "$action" in
+	send|url) ;;
+	*) printf 'send-payload: illegal action: %s\n' "$1">&2; exit 1;;
+esac
 # read values from the server configuration
 getServerUrlFromConf() {
 	port=$("$jqExe" -r 'if null == .port then empty else .port end' "$1")
@@ -34,23 +76,14 @@ getServerUrlFromConf() {
 	printf '%s' "$protocol://$host:$port"
 }
 
-digest='sha256'
-
-serverConf="$1"
-hookName="$2"
-payloadFile="$3"
-opt4="$4"
-
-#$dbg && printf '#  opt 4   [%s]\n' "$opt4">&2
-
-if test '--sign-prefix' = "$opt4"; then
+if $signPrefixEnabled; then
 	signPrefix="$digest="
 else
 	signPrefix=''
 fi
 
 if test -z "$serverConf"; then printf 'send-payload: missing configuration\n'>&2; exit 1; fi
-if test '--url' = "$hookName"; then
+if test 'url' = "$action"; then
 	getServerUrlFromConf "$serverConf"
 	exit 0
 fi
@@ -69,7 +102,7 @@ fi
 
 # - JSON file
 # - hook name
-getScmTypeAndSecretFromConf() {
+getHookTypeAndSecretFromConf() {
 	#shellcheck disable=SC2016
 	"$jqExe" -r --arg hookName "$2" '
 	if null == .hook then
@@ -82,23 +115,23 @@ getScmTypeAndSecretFromConf() {
 }
 
 serverUrl=$(getServerUrlFromConf "$serverConf")
-record=$(getScmTypeAndSecretFromConf "$serverConf" "$hookName")
+record=$(getHookTypeAndSecretFromConf "$serverConf" "$hookName")
 #if $dbg; then printf '#  record [%s]\n' "$record">&2; fi
-scmType="${record%%	*}"
+hookType="${record%%	*}"
 record="${record#*	}"
 hookSecret="${record%%	*}"
 record="${record#*	}"
 hookPath="${record}"
 unset record
 
-if test -z "$scmType"; then
-	printf 'send-payload: no scm type for hook name: %s\n' "$hookName">&2
+if test -z "$hookType"; then
+	printf 'send-payload: no hook type for hook name: %s\n' "$hookName">&2
 	exit 1
 fi
 
 if $dbg; then {
 	printf '#  url            %s\n' "${serverUrl}$hookPath"
-	printf '#  scm type       %s\n' "$scmType"
+	printf '#  hook type      %s\n' "$hookType"
 	printf '#  hook name      %s\n' "$hookName"
 	printf '#  hook secret    %s\n' "$hookSecret"
 	if test -n "$signPrefix"; then
@@ -116,25 +149,29 @@ signData() {
 payload="$(cat "$payloadFile")"
 
 
-case "$scmType" in
+case "$hookType" in
 	github)
 		eventHeader='X-Github-Event'
-		eventHeaderValue='push'
 		signHeader='X-Hub-Signature-256'
 		signType='hmac256';;
 	gogs)
 		eventHeader='X-Gogs-Event'
-		eventHeaderValue='push'
 		signHeader='X-Gogs-Signature'
 		signType='hmac256';;
 	bitbucket)
 		eventHeader='X-Event-Key'
-		eventHeaderValue='repo:push'
+		test -z "$eventHeaderValue" && eventHeaderValue='repo:push'
 		signHeader='X-Dummy-Signature'
 		signType='';;
-	*) printf 'send-payload: unexpected scm type: %s\n' "$scmType">&2
+	webhook)
+		eventHeader='X-Webhook-Event'
+		signHeader='X-Webhook-Signature'
+		signType='hmac256';;
+	*) printf 'send-payload: unexpected hook type: %s\n' "$hookType">&2
 	exit 1;;
 esac
+
+test -z "$eventHeaderValue" && eventHeaderValue='push'
 
 if test -z "$signType"; then
 	signature=''
@@ -149,10 +186,19 @@ if $dbg && test -n "$signature"; then {
 	printf '#  signature      %s\n' "$signature"
 }>&2; fi
 
-#printf 'DEV EXIT\n'>&2; exit 0
+if $testMode; then
+	set -x
+	: \
+	curl "${serverUrl}$hookPath" \
+	  -H 'Content-Type: application/json' \
+	  -H "$eventHeader: $eventHeaderValue" \
+	  -H "$signHeader: ${signPrefix}$signature" \
+	  --data-raw "$payload"
+else
+	curl "${serverUrl}$hookPath" \
+	  -H 'Content-Type: application/json' \
+	  -H "$eventHeader: $eventHeaderValue" \
+	  -H "$signHeader: ${signPrefix}$signature" \
+	  --data-raw "$payload"
+fi
 
-curl "${serverUrl}$hookPath" \
-  -H 'Content-Type: application/json' \
-  -H "$eventHeader: $eventHeaderValue" \
-  -H "$signHeader: ${signPrefix}$signature" \
-  --data-raw "$payload"
