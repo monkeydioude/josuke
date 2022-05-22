@@ -35,7 +35,7 @@ func bitbucketToPayload(r io.Reader, hookEvent string) (*Payload, error) {
 		return nil, err
 	}
 
-	// FIXME : remove this event name modification in future realease,
+	// FIXME : remove this event name modification in future release,
 	// made to avoid breaking change on 2022-05-20.
 	if hookEvent == "repo:push" {
 		hookEvent = "push"
@@ -44,7 +44,7 @@ func bitbucketToPayload(r io.Reader, hookEvent string) (*Payload, error) {
 	var ref string
 	if hookEvent == "push" {
 		if len(b.Push.Changes) == 0 {
-			return nil, errors.New("No push changes in payload for BitBucket push event")
+			return nil, errors.New("no push changes in payload for BitBucket push event")
 		}
 		ref = fmt.Sprintf("refs/heads/%s", b.Push.Changes[0].New.Name)
 	} else {
