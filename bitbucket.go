@@ -41,14 +41,12 @@ func bitbucketToPayload(r io.Reader, hookEvent string) (*Payload, error) {
 		hookEvent = "push"
 	}
 
-	var ref string
+	var ref string = ""
 	if hookEvent == "push" {
 		if len(b.Push.Changes) == 0 {
 			return nil, errors.New("no push changes in payload for BitBucket push event")
 		}
 		ref = fmt.Sprintf("refs/heads/%s", b.Push.Changes[0].New.Name)
-	} else {
-		ref = ""
 	}
 
 	return &Payload{

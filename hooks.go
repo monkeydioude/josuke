@@ -48,6 +48,8 @@ func randomString(len int) string {
 	return string(bytes)
 }
 
+// storePayload write the payload content if the store directory path is set on the hook handler.
+// Returns the payload path or an empty string if the payload is not stored.
 func storePayload(payloadContent string, hh *HookHandler) (string, error) {
 	if hh.Josuke.Store == "" {
 		return "", nil
