@@ -9,6 +9,8 @@ conf="$thisDir/test2.config.json"
 sendExe="$thisDir/send-payload"
 
 hookName="$1"
+if test -z "${1%%--*}"; then hookName=''; else hookName="$1"; shift; fi
+
 if test -z "$hookName"; then
 	hookName='bitbucket'
 	#hookName='githubounette'
@@ -18,6 +20,7 @@ if test -z "$hookName"; then
 fi
 
 case "$hookName" in 
+	captain) payloadFile="$thisDir/captain-payload.json";;
 	gogs) payloadFile="$thisDir/gogs-push.json";;
 	*) payloadFile="$thisDir/commit-payload.json";;
 esac

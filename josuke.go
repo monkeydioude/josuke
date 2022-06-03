@@ -103,13 +103,13 @@ func (j *Josuke) HandleHooks() {
 		}
 
 		if j.LogEnabled(InfoLevel) {
-			log.Printf("[INFO] Gureto daze 8), handling %s hook %s\n", hh.Scm.Title, hh.Hook.Name)
+			log.Printf("[INFO] Gureto daze 8), handling %s hook %s\n", hh.HookDef.Title, hh.Hook.Name)
 		}
 
 		if j.LogEnabled(DebugLevel) && nil != hh.Hook.Command && len(hh.Hook.Command) > 0 {
 			log.Println("[DBG ] hook command: ", hh.Hook.Command)
 		}
-		http.HandleFunc(hook.Path, hh.Scm.Handler)
+		http.HandleFunc(hook.Path, hh.HookDef.Handler)
 	}
 }
 
@@ -126,12 +126,20 @@ var keyholders = map[string]func(*Info) string{
 	"%payload_path%": func(i *Info) string {
 		return i.PayloadPath
 	},
+	"%payload_event%": func(i *Info) string {
+		return i.PayloadEvent
+	},
+	"%payload_hook%": func(i *Info) string {
+		return i.PayloadHook
+	},
+
 }
 
 // A Hook maps HTTP requests to local commands.
 type Hook struct {
 	// Optional command, takes precedence over deployment commands if set.
-	// Only %payload_path% placeholder is available.
+	// Only %payload_path%, %payload_event% and %payload_hook%
+	// placeholders are available.
 	Command     []string `json:"command"`
 	Name        string   `json:"name"`
 	Type        string   `json:"type"`
@@ -162,10 +170,12 @@ func (r Repo) matches(trial string) bool {
 
 // Info contains various data about directory to deploy to and git's repo url
 type Info struct {
-	BaseDir     string
-	ProjDir     string
-	HtmlUrl     string
-	PayloadPath string
+	BaseDir      string
+	ProjDir      string
+	HtmlUrl      string
+	PayloadHook  string
+	PayloadPath  string
+	PayloadEvent string
 }
 
 // Branch mirrors config's branch section, containing branch Name & Actions linked to it

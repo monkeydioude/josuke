@@ -8,9 +8,9 @@ Josuke is a simple guy, 3 things and he's happy:
 - Run Josuke and feed him your config
 - Go to Github/Bitbucket and set webhooks routes as specified in your config
 
-**Writing a json config file is required.** 
+**Writing a json config file is required.**
 
-**Config file path must be given using the -c flag** (josuke -c /path/to/config.json).
+**Config file path must be given using the -c flag**: `josuke -c /path/to/config.json`.
 
 Example of a classic config.json:
 
@@ -34,7 +34,9 @@ Example of a classic config.json:
             "secret": "0061Gki75ieIEWaQ8y8SlGpUhGpx0HEfdF3D61Tz",
             "command": [
                 "/home/mkd/Work/josuke/script/hook",
-                "%payload_path%"
+                "%payload_path%",
+                "%payload_event%",
+                "%payload_hook%"
             ]
         },
         {
@@ -82,7 +84,7 @@ Example of a classic config.json:
 
 #### TLS configuration ####
 
-Add the `cert` and `key` properties inside config's json file, same level as `host`, `port`. 
+Add the `cert` and `key` properties inside config's json file, same level as `host`, `port`.
 ```json
 {
     "…": "…",
@@ -117,7 +119,7 @@ openssl req -x509 -newkey rsa:4096 -nodes \
 - `type`: SCM type, currently "gogs", "github" or "bitbucket".
 - `path`: local web path. This path must be specified in the SCM webhook’s parameters.
 - `secret`: signs the payload for Gogs and Github. *Optional, but strongly recommended for security purpose.* If not set, anybody can fake a payload on your webhook endpoint.
-- `command`: optional command, takes precedence over the deployment commands if set. It is run at each valid request. *Only the `%payload_path%` placeholder is available in this hook scope.*  
+- `command`: optional command, takes precedence over the deployment commands if set. It is run at each valid request. *Only the `%payload_path%`, `%payload_hook%` and `%payload_event%` placeholders are available in this hook scope.*
 
 There are three types of hooks:
 - `gogs`
@@ -126,13 +128,26 @@ There are three types of hooks:
 
 ##### Command samples #####
 
-Run a shell script `C:/Users/me/josuke/script/hook` with the payload path as a parameter on Windows. It uses the shell that comes with Git Bash:
+Run a shell script `/home/me/josuke/script/hook` with the payload path and event.
+
+```json
+"command": [
+	"/home/me/josuke/script/hook",
+	"%payload_path%",
+	"%payload_event%",
+	"%payload_hook%"
+]
+```
+
+On Windows, use the shell that comes with Git Bash for instance.
 
 ```json
 "command": [
 	"C:/Users/me/AppData/Local/Programs/Git/bin/sh.exe",
 	"C:/Users/me/josuke/script/hook",
-	"%payload_path%"
+	"%payload_path%",
+	"%payload_event%",
+	"%payload_hook%"
 ]
 ```
 
@@ -142,13 +157,13 @@ The **repository rules** objects are defined as such:
 - `repo`: name of your repository in the repository universe. No need to specify the whole **only the username and repository name is required** (ex: monkeydioude/josuke)
 - `branches`: is an array of objects defining the **branche behavior** towards specified branches.
 - `base_dir`: **OPTIONAL** Allow you to set what should be a base directory usable at **commands definition** level (ex: /var/projects/sources)
-- `proj_dir`: **OPTIONAL** Allow you to set what should be a project directory (or name) usable at **commands definition** level 
+- `proj_dir`: **OPTIONAL** Allow you to set what should be a project directory (or name) usable at **commands definition** level
 
 **branch behaviors** objects are defined as such:
 - `branch`: behavior toward a specific branch
 - `actions`: is an array of objects defining the behavior towards specific **actions**.
 
-**actions** objects are defined as such: 
+**actions** objects are defined as such:
 - `action`: is the kind of action sent by the payload, that has been taken toward the source branch (ex: push on a branch, merge a branch with the source branch...)
 - `commands`: is an array of objects defining the series of **commands** Josuke should trigger for this `action`
 
@@ -164,12 +179,14 @@ The **repository rules** objects are defined as such:
 
 ```
 
-### You can use these 4 placeholders at commands level
+### You can use these 5 placeholders at command level
 
 - `%base_dir%`: referring to "base_dir" set in config, must be defined by `base_dir` of each `deployment`
 - `%proj_dir%`: referring to "proj_dir" set in config, must be defined by `proj_dir` of each `deployment`
 - `%html_url%`: retrieved from gogs/github/bitbucket's payload informations, html url of your repo
+- `%payload_hook%`: name of the hook that received the payload (`hook[<num>].name` in the configuration).
 - `%payload_path%`: path to the payload, available if enabled with `store` in the configuration. Otherwise, empty.
+- `%payload_event%`: content of the event request header, be it `x-gogs-event`, `x-github-event`, `x-key-event`. It contains the webhook event, `push` for instance. If the event header is absent, it is empty.
 
 ### Tests:
 
