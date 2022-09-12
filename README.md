@@ -121,10 +121,11 @@ openssl req -x509 -newkey rsa:4096 -nodes \
 - `secret`: signs the payload for Gogs and Github. *Optional, but strongly recommended for security purpose.* If not set, anybody can fake a payload on your webhook endpoint.
 - `command`: optional command, takes precedence over the deployment commands if set. It is run at each valid request. *Only the `%payload_path%`, `%payload_hook%` and `%payload_event%` placeholders are available in this hook scope.*
 
-There are three types of hooks:
+There are four types of hooks:
+- `bitbucket`
 - `gogs`
 - `github`
-- `bitbucket`
+- `webhook`
 
 ##### Command samples #####
 

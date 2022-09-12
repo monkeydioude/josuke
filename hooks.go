@@ -210,7 +210,7 @@ func (hh *HookHandler) getHookActions(payload *Payload, payloadPath string) []Ho
 		})
 }
 
-// WebhookRequest handles gogs' webhook triggers
+// WebhookRequest handles generic webhook triggers
 func (hh *HookHandler) WebhookRequest(rw http.ResponseWriter, req *http.Request) {
 
 	eventHeaderName := "x-webhook-event"
