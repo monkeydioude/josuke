@@ -41,14 +41,15 @@ func parseLogLevel(value string) (LogLevel, bool) {
 // Josuke is the main object, that contains the HTTP server configuration
 // and the hook definitions.
 type Josuke struct {
-	LogLevel     LogLevel
-	LogLevelName string   `json:"logLevel"`
-	Hooks        *[]*Hook `json:"hook"`
-	Host         string   `json:"host"`
-	Port         int      `json:"port"`
-	Cert         string   `json:"cert"`
-	Key          string   `json:"key"`
-	Store        string   `json:"store"`
+	LogLevel         LogLevel
+	LogLevelName     string   `json:"logLevel"`
+	Hooks            *[]*Hook `json:"hook"`
+	Host             string   `json:"host"`
+	Port             int      `json:"port"`
+	Cert             string   `json:"cert"`
+	Key              string   `json:"key"`
+	Store            string   `json:"store"`
+	HealthcheckRoute string   `json:"healthcheck_route,omitempty"`
 }
 
 // New creates a josuke HTTP server that handles SCM webhooks.
@@ -132,7 +133,6 @@ var keyholders = map[string]func(*Info) string{
 	"%payload_hook%": func(i *Info) string {
 		return i.PayloadHook
 	},
-
 }
 
 // A Hook maps HTTP requests to local commands.

@@ -36,7 +36,10 @@ func main() {
 
 	j.HandleHooks()
 
-	http.HandleFunc("/healthcheck", func(rw http.ResponseWriter, r *http.Request) {
+	if j.HealthcheckRoute == "" {
+		j.HealthcheckRoute = "/healthcheck"
+	}
+	http.HandleFunc(j.HealthcheckRoute, func(rw http.ResponseWriter, r *http.Request) {
 		rw.WriteHeader(200)
 		rw.Write([]byte("I'm fine"))
 	})
