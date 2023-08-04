@@ -248,8 +248,8 @@ func ExecuteCommand(c []string, i *Info) error {
 		return fmt.Errorf("empty command slice")
 	}
 	name := c[0]
-	args := make([]string, len(c)-1)
-	copy(args, c[1:])
+	// args := make([]string, len(c)-1)
+	args := c[1:]
 	args = replaceKeyholders(args, i)
 
 	log.Printf("[INFO] executing %s %+v\n", name, args)
