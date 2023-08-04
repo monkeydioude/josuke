@@ -50,6 +50,7 @@ type Josuke struct {
 	Key              string   `json:"key"`
 	Store            string   `json:"store"`
 	HealthcheckRoute string   `json:"healthcheck_route,omitempty"`
+	Deployment       *[]*Repo `json:"deployment"`
 }
 
 // New creates a josuke HTTP server that handles SCM webhooks.
@@ -145,7 +146,6 @@ type Hook struct {
 	Type        string   `json:"type"`
 	Path        string   `json:"path"`
 	Secret      string   `json:"secret"`
-	Deployment  *[]*Repo `json:"deployment"`
 	SecretBytes []byte
 }
 

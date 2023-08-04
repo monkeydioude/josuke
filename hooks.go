@@ -78,7 +78,8 @@ func (hh *HookHandler) GenericRequest(
 	rw http.ResponseWriter,
 	req *http.Request,
 	eventHeaderName string,
-	signatureHeaderName string) {
+	signatureHeaderName string,
+) {
 
 	log.Printf("[INFO] Caught call from %s %+v\n", hh.Hook.Type, req.URL)
 	defer req.Body.Close()
@@ -104,8 +105,8 @@ func (hh *HookHandler) GenericRequest(
 		}
 		equalIndex := strings.Index(requestSignature, "=")
 		if equalIndex > -1 {
-			digestName = requestSignature[: equalIndex]
-			requestSignature = requestSignature[equalIndex + 1:]
+			digestName = requestSignature[:equalIndex]
+			requestSignature = requestSignature[equalIndex+1:]
 		}
 
 		// TODO one hash sha256 as of now. Could have a dictionary: digest name to digest method.
@@ -126,7 +127,7 @@ func (hh *HookHandler) GenericRequest(
 	}
 
 	payloadPath, err := storePayload(payloadContent, hh)
-	if err !=  nil {
+	if err != nil {
 		log.Printf("[ERR ] cannot store the payload: %s", err)
 	}
 
@@ -178,23 +179,22 @@ func (hh *HookHandler) getHookActions(payload *Payload, payloadPath string) []Ho
 					Commands: [][]string{hh.Hook.Command},
 				},
 				Info: &Info{
-					BaseDir:     "",
-					ProjDir:     "",
-					HtmlUrl:     "",
-					PayloadHook: hh.Hook.Name,
-					PayloadPath: payloadPath,
+					BaseDir:      "",
+					ProjDir:      "",
+					HtmlUrl:      "",
+					PayloadHook:  hh.Hook.Name,
+					PayloadPath:  payloadPath,
 					PayloadEvent: payload.Action,
 				},
 			})
-
 	}
 	if hh.Josuke.LogEnabled(TraceLevel) {
 		log.Println("[TRAC] hook action from deployment")
 	}
-	if hh.Hook.Deployment == nil {
+	if hh.Josuke.Deployment == nil {
 		return hookActions
 	}
-	action, info := payload.getDeployAction(hh.Hook.Deployment, payloadPath, hh.Hook.Name, payload.Action)
+	action, info := payload.getDeployAction(hh.Josuke.Deployment, payloadPath, hh.Hook.Name, payload.Action)
 
 	// No deployment found
 	if action == nil {
@@ -261,7 +261,8 @@ func (hh *HookHandler) BitbucketRequest(rw http.ResponseWriter, req *http.Reques
 
 	// TODO : implement payload path for BitbucketRequest
 	payloadPath := ""
-	action, info := payload.getDeployAction(hh.Hook.Deployment, payloadPath, hh.Hook.Name, payload.Action)
+	action, info := payload.getDeployAction(hh.Josuke.Deployment, payloadPath, hh.Hook.Name, payload.Action)
+
 	if action == nil {
 		log.Println("[ERR ] Could not retrieve any action")
 		return
