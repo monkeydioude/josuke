@@ -3,6 +3,7 @@ package josuke
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"os/exec"
 	"syscall"
 )
@@ -19,5 +20,6 @@ func NativeExecuteCommand(cmd *exec.Cmd) error {
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("%s: %s", err, cmd.Stderr)
 	}
+	log.Printf("[INFO] %s\n", cmd.Stdout)
 	return nil
 }
