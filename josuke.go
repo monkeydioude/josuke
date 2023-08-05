@@ -276,8 +276,8 @@ func ExecuteCommand(c []string, i *Info) error {
 	cmd.Stdout = &stdout
 
 	if err := NativeExecuteCommand(cmd); err != nil {
-		return fmt.Errorf("could not execute command %s %v: %s %s", name, args, err, cmd.Stderr)
+		return fmt.Errorf("could not execute command %s %v: %s %s", name, args, err, stderr.String())
 	}
-	log.Printf("[INFO] %s\n", cmd.Stdout)
+	log.Printf("[INFO] %s\n", stdout.String())
 	return nil
 }
