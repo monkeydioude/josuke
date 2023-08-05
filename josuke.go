@@ -268,6 +268,7 @@ func ExecuteCommand(c []string, i *Info) error {
 		}
 	}
 	cmd := exec.Command(name, args...)
+	cmd.Env = os.Environ()
 
 	if err := NativeExecuteCommand(cmd); err != nil {
 		return fmt.Errorf("could not execute command %s %v: %s", name, args, err)
