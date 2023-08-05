@@ -1,6 +1,7 @@
 package josuke
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -269,9 +270,14 @@ func ExecuteCommand(c []string, i *Info) error {
 	}
 	cmd := exec.Command(name, args...)
 	cmd.Env = os.Environ()
+	var stderr bytes.Buffer
+	var stdout bytes.Buffer
+	cmd.Stderr = &stderr
+	cmd.Stdout = &stdout
 
 	if err := NativeExecuteCommand(cmd); err != nil {
-		return fmt.Errorf("could not execute command %s %v: %s", name, args, err)
+		return fmt.Errorf("could not execute command %s %v: %s %s", name, args, err, cmd.Stderr)
 	}
+	log.Printf("[INFO] %s\n", cmd.Stdout)
 	return nil
 }
