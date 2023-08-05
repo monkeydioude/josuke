@@ -271,13 +271,12 @@ func ExecuteCommand(c []string, i *Info) error {
 	cmd := exec.Command(name, args...)
 	cmd.Env = os.Environ()
 	var stderr bytes.Buffer
-	var stdout bytes.Buffer
 	cmd.Stderr = &stderr
-	cmd.Stdout = &stdout
 
 	if err := NativeExecuteCommand(cmd); err != nil {
 		return fmt.Errorf("could not execute command %s %v: %s %s", name, args, err, stderr.String())
 	}
-	log.Printf("[INFO] %s\n", stdout.String())
+	out, _ := cmd.CombinedOutput()
+	log.Printf("[INFO] %s\n", string(out))
 	return nil
 }
