@@ -39,10 +39,7 @@ func main() {
 	if j.HealthcheckRoute == "" {
 		j.HealthcheckRoute = "/healthcheck"
 	}
-	http.HandleFunc(j.HealthcheckRoute, func(rw http.ResponseWriter, r *http.Request) {
-		rw.WriteHeader(200)
-		rw.Write([]byte("I'm fine"))
-	})
+	http.HandleFunc(j.HealthcheckRoute, HealthcheckHandler)
 
 	protocol, handler := findOutProtocolHandler(j)
 	if j.LogEnabled(josuke.InfoLevel) {
