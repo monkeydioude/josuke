@@ -3,10 +3,8 @@ package josuke
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -43,35 +41,23 @@ func parseLogLevel(value string) (LogLevel, bool) {
 // and the hook definitions.
 type Josuke struct {
 	LogLevel         LogLevel
-	LogLevelName     string   `json:"logLevel"`
-	Hooks            *[]*Hook `json:"hook"`
-	Host             string   `json:"host"`
-	Port             int      `json:"port"`
-	Cert             string   `json:"cert"`
-	Key              string   `json:"key"`
-	Store            string   `json:"store"`
-	HealthcheckRoute string   `json:"healthcheck_route,omitempty"`
-	Deployment       *[]*Repo `json:"deployment"`
+	LogLevelName     string  `json:"logLevel" yaml:"logLevel"`
+	Hooks            []*Hook `json:"hook" yaml:"hook"`
+	Host             string  `json:"host" yaml:"host"`
+	Port             int     `json:"port" yaml:"port"`
+	Cert             string  `json:"cert" yaml:"cert"`
+	Key              string  `json:"key" yaml:"key"`
+	Store            string  `json:"store" yaml:"store"`
+	HealthcheckRoute string  `json:"healthcheck_route,omitempty" yaml:"healthcheck_route,omitempty"`
+	Deployment       []*Repo `json:"deployment" yaml:"deployment"`
 }
 
 // New creates a josuke HTTP server that handles SCM webhooks.
 func New(configFilePath string) (*Josuke, error) {
-	file, err := ioutil.ReadFile(configFilePath)
-
+	j, err := parseConfig(configFilePath)
 	if err != nil {
-		return nil, fmt.Errorf("could not read config file: %v", err)
+		return nil, fmt.Errorf("could not parse config file: %v", err)
 	}
-
-	j := &Josuke{
-		LogLevelName: "INFO",
-		Host:         "localhost",
-		Port:         8082,
-	}
-
-	if err := json.Unmarshal(file, j); err != nil {
-		return nil, errors.New("could not parse json from config file")
-	}
-
 	logLevel, ok := parseLogLevel(j.LogLevelName)
 	if !ok {
 		return nil, fmt.Errorf("could not parse the log level: %s", j.LogLevelName)
@@ -92,7 +78,7 @@ func (j *Josuke) HandleHooks() {
 	if j.Hooks == nil {
 		return
 	}
-	for _, hook := range *j.Hooks {
+	for _, hook := range j.Hooks {
 		if j.LogEnabled(TraceLevel) {
 			log.Printf("[TRAC] add hook %s (%s): %s\n", hook.Name, hook.Type, hook.Path)
 		}
@@ -142,26 +128,26 @@ type Hook struct {
 	// Optional command, takes precedence over deployment commands if set.
 	// Only %payload_path%, %payload_event% and %payload_hook%
 	// placeholders are available.
-	Command     []string `json:"command"`
-	Name        string   `json:"name"`
-	Type        string   `json:"type"`
-	Path        string   `json:"path"`
-	Secret      string   `json:"secret"`
+	Command     []string `json:"command,omitempty" yaml:"command,omitempty"`
+	Name        string   `json:"name" yaml:"name"`
+	Type        string   `json:"type" yaml:"type"`
+	Path        string   `json:"path" yaml:"path"`
+	Secret      string   `json:"secret" yaml:"secret"`
 	SecretBytes []byte
 }
 
 // Repository represents the payload repository information
 type Repository struct {
-	Name    string `json:"full_name"`
-	HtmlUrl string `json:"html_url"`
+	Name    string `json:"full_name" yaml:"full_name"`
+	HtmlUrl string `json:"html_url" yaml:"html_url"`
 }
 
 // Repo is built from github's json payload, mirroring dir data from config, branches & repo name
 type Repo struct {
-	Name     string   `json:"repo"`
-	Branches []Branch `json:"branches"`
-	BaseDir  string   `json:"base_dir"`
-	ProjDir  string   `json:"proj_dir"`
+	Name     string   `json:"repo" yaml:"repo"`
+	Branches []Branch `json:"branches" yaml:"branches"`
+	BaseDir  string   `json:"base_dir" yaml:"base_dir"`
+	ProjDir  string   `json:"proj_dir" yaml:"proj_dir"`
 }
 
 // Matches repo names from payload and config
@@ -181,8 +167,8 @@ type Info struct {
 
 // Branch mirrors config's branch section, containing branch Name & Actions linked to it
 type Branch struct {
-	Name    string   `json:"branch"`
-	Actions []Action `json:"actions"`
+	Name    string   `json:"branch" yaml:"branch"`
+	Actions []Action `json:"actions" yaml:"actions"`
 }
 
 // Matches a branch name using payload & concatenation of static "refs/heads/" + config's branch name
@@ -192,8 +178,8 @@ func (b Branch) matches(trial string) bool {
 
 // Action contains set of commands from config matching the type of action sent from github (if action is "push", then we do "these" commands)
 type Action struct {
-	Action   string     `json:"action"`
-	Commands [][]string `json:"commands"`
+	Action   string     `json:"action" yaml:"action"`
+	Commands [][]string `json:"commands" yaml:"commands"`
 }
 
 // Executes the retrieved set of commands from config

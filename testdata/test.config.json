@@ -1,32 +1,67 @@
 {
-    "github_hook": "/josuke/github",
-    "bitbucket_hook": "/josuke/bitbucket",
+    "hook": [
+        {
+            "name": "github",
+            "type": "github",
+            "path": "/josuke/github",
+            "secret": "wd51QvLFIG3VFim5TmltV2xB40YCWwfJmnmxo9pp"
+        }
+    ],
     "port": 8082,
-    "deployment":
-    [
+    "deployment": [
         {
             "repo": "monkeydioude/josuke",
             "proj_dir": "josuke",
             "base_dir": "/home/mkd/Work/go/src/github.com/monkeydioude",
-            "branches":
-            [
+            "branches": [
                 {
-                    "branch" :"master",
-                    "actions":
-                    [
+                    "branch": "master",
+                    "actions": [
                         {
                             "action": "push",
-                            "commands":
-                            [
-                                ["cd", "%base_dir%"],
-                                ["git", "clone", "git@github.com:monkeycddioude/josuke.git"],
-                                ["cd", "%proj_dir%"],
-                                ["git", "checkout", "master"],
-                                ["git", "fetch", "--all"],
-                                ["git", "reset", "--hard", "origin/master"],
-                                ["cd", "bin/josuke"],
-                                ["go", "install"],
-                                ["service", "josuke", "restart"]
+                            "commands": [
+                                [
+                                    "cd",
+                                    "%base_dir%"
+                                ],
+                                [
+                                    "git",
+                                    "clone",
+                                    "git@github.com:monkeycddioude/josuke.git"
+                                ],
+                                [
+                                    "cd",
+                                    "%proj_dir%"
+                                ],
+                                [
+                                    "git",
+                                    "checkout",
+                                    "master"
+                                ],
+                                [
+                                    "git",
+                                    "fetch",
+                                    "--all"
+                                ],
+                                [
+                                    "git",
+                                    "reset",
+                                    "--hard",
+                                    "origin/master"
+                                ],
+                                [
+                                    "cd",
+                                    "bin/josuke"
+                                ],
+                                [
+                                    "go",
+                                    "install"
+                                ],
+                                [
+                                    "service",
+                                    "josuke",
+                                    "restart"
+                                ]
                             ]
                         }
                     ]

@@ -25,7 +25,7 @@ func findOutProtocolHandler(j *josuke.Josuke) (string, func() error) {
 }
 
 func main() {
-	configFileName := flag.String("c", "config.json", "Path to config file")
+	configFileName := flag.String("c", "config.json", "Path to config file, yml or json format")
 	flag.Parse()
 
 	j, err := josuke.New(*configFileName)

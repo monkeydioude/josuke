@@ -1,5 +1,5 @@
 ## build image ##
-FROM golang:1.15-alpine AS build
+FROM golang:1.25-alpine AS build
 WORKDIR /src
 EXPOSE 8082
 RUN apk add openrc curl jq openssl

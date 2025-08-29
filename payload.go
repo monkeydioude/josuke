@@ -23,8 +23,8 @@ func (p *Payload) getBranch(r *Repo) *Branch {
 }
 
 // retrieve repo from config using Payload
-func (p *Payload) getRepo(deployment *[]*Repo) *Repo {
-	for _, repo := range *deployment {
+func (p *Payload) getRepo(deployment []*Repo) *Repo {
+	for _, repo := range deployment {
 		if repo.matches(p.Repository.Name) {
 			return repo
 		}
@@ -33,7 +33,7 @@ func (p *Payload) getRepo(deployment *[]*Repo) *Repo {
 }
 
 // Process of retrieving deploy information from github/gogs payload
-func (p *Payload) getDeployAction(deployment *[]*Repo, payloadPath string, payloadHook string, payloadEvent string) (*Action, *Info) {
+func (p *Payload) getDeployAction(deployment []*Repo, payloadPath string, payloadHook string, payloadEvent string) (*Action, *Info) {
 	repo := p.getRepo(deployment)
 	if repo == nil {
 		log.Println("[WARN] Could not match any repo in config file. We'll just do nothing.")
@@ -51,11 +51,11 @@ func (p *Payload) getDeployAction(deployment *[]*Repo, payloadPath string, paylo
 		return nil, nil
 	}
 	return action, &Info{
-		BaseDir: repo.BaseDir,
-		ProjDir: repo.ProjDir,
-		HtmlUrl: p.Repository.HtmlUrl,
-		PayloadHook: payloadHook,
-		PayloadPath: payloadPath,
+		BaseDir:      repo.BaseDir,
+		ProjDir:      repo.ProjDir,
+		HtmlUrl:      p.Repository.HtmlUrl,
+		PayloadHook:  payloadHook,
+		PayloadPath:  payloadPath,
 		PayloadEvent: payloadEvent,
 	}
 }
