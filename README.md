@@ -110,7 +110,7 @@ openssl req -x509 -newkey rsa:4096 -nodes \
 - `host`: binds the server to local address. Defaults to localhost.
 - `port`: port Josuke will listen to. Defaults to 8082.
 - `store`: directory, optional. If present, every valid payload is written in this directory with a dynamic name: `{hook.name}.{timestamp}.{random string}.json`. The local path to this file is available to commands with the placeholder `%payload_path%`.
-- `queue_file`: file, optional. If present, the job queue is saved in this file and restored at boot. See [Job queue](#job-queue).
+- `queue_file`: file, optional. If present, the job queue is saved in this file and restored at boot. See [Job queue](#job-queue). The file is created at boot if missing, its directory must exist and be writable: josuke does not start otherwise.
 - `jobs_api`: optional, enables the HTTP API listing and stopping jobs. See [Job queue](#job-queue).
   - `token`: required, expected in the `Authorization: Bearer <token>` request header.
   - `route`: optional, defaults to `/jobs`.

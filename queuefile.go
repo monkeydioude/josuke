@@ -37,7 +37,8 @@ func (q *jobQueue) load() error {
 	}
 	data, err := os.ReadFile(q.path)
 	if errors.Is(err, fs.ErrNotExist) {
-		return nil
+		// Created right away, so a wrong path fails at boot rather than at the first job.
+		return q.write()
 	}
 	if err != nil {
 		return err
@@ -58,14 +59,20 @@ func (q *jobQueue) load() error {
 		log.Printf("[INFO] restored %d waiting job(s) from %s\n", len(q.waiting), q.path)
 	}
 	// Forget the interrupted job, it should not be reported again at next boot.
-	q.save()
-	return nil
+	return q.write()
 }
 
-// save writes the queue to its file, if any. q.mu must be held.
+// save writes the queue to its file, if any, and logs failures. q.mu must be held.
 func (q *jobQueue) save() {
+	if err := q.write(); err != nil {
+		log.Printf("[ERR ] %s\n", err)
+	}
+}
+
+// write writes the queue to its file, if any. q.mu must be held.
+func (q *jobQueue) write() error {
 	if q.path == "" {
-		return
+		return nil
 	}
 	saved := savedQueue{LastID: q.lastID, Waiting: make([]savedJob, 0, len(q.waiting))}
 	if q.running != nil {
@@ -81,8 +88,9 @@ func (q *jobQueue) save() {
 		err = writeFileAtomic(q.path, data)
 	}
 	if err != nil {
-		log.Printf("[ERR ] could not save the queue to %s: %s\n", q.path, err)
+		return fmt.Errorf("could not save the queue to %s: %w", q.path, err)
 	}
+	return nil
 }
 
 // writeFileAtomic replaces the file content, so a crash never leaves it half written.

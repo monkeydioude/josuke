@@ -187,6 +187,26 @@ func Test_Queue_Restores_Waiting_Jobs_From_Its_File(t *testing.T) {
 	assert.Equal(t, savedQueue{LastID: 4, Waiting: []savedJob{}}, saved)
 }
 
+func Test_Queue_Creates_Its_File_At_Startup(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "queue.json")
+
+	newTestQueue(t, 1, path, runJob)
+
+	data, err := os.ReadFile(path)
+	require.NoError(t, err)
+	var saved savedQueue
+	require.NoError(t, json.Unmarshal(data, &saved))
+	assert.Equal(t, savedQueue{Waiting: []savedJob{}}, saved)
+}
+
+func Test_Queue_Fails_When_Its_File_Cannot_Be_Written(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "missing-dir", "queue.json")
+
+	_, err := newJobQueue(1, path, runJob)
+
+	assert.ErrorContains(t, err, "could not save the queue to "+path)
+}
+
 func Test_Queue_Fails_On_A_Corrupted_File(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "queue.json")
 	require.NoError(t, os.WriteFile(path, []byte("{nope"), 0600))
