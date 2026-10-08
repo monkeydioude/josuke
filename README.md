@@ -110,6 +110,10 @@ openssl req -x509 -newkey rsa:4096 -nodes \
 - `host`: binds the server to local address. Defaults to localhost.
 - `port`: port Josuke will listen to. Defaults to 8082.
 - `store`: directory, optional. If present, every valid payload is written in this directory with a dynamic name: `{hook.name}.{timestamp}.{random string}.json`. The local path to this file is available to commands with the placeholder `%payload_path%`.
+- `queue_file`: file, optional. If present, the job queue is saved in this file and restored at boot. See [Job queue](#job-queue).
+- `jobs_api`: optional, enables the HTTP API listing and stopping jobs. See [Job queue](#job-queue).
+  - `token`: required, expected in the `Authorization: Bearer <token>` request header.
+  - `route`: optional, defaults to `/jobs`.
 - `hook`: array of objects defining SCM hooks for Gogs, GitHub and BitBucket.
 - `deployment`: array of objects defining deployments **repository rules** Josuke should follow.
 
@@ -188,6 +192,44 @@ The **repository rules** objects are defined as such:
 - `%payload_hook%`: name of the hook that received the payload (`hook[<num>].name` in the configuration).
 - `%payload_path%`: path to the payload, available if enabled with `store` in the configuration. Otherwise, empty.
 - `%payload_event%`: content of the event request header, be it `x-gogs-event`, `x-github-event`, `x-key-event`. It contains the webhook event, `push` for instance. If the event header is absent, it is empty.
+
+### Job queue
+
+Each valid webhook request becomes a job and is answered right away with `202 Accepted` and the job id (`queued job #3`), so SCM webhook timeouts are not an issue for long builds.
+Jobs run one at a time, in the order they were received: builds never overlap. Up to 100 jobs can wait in the queue, further requests are answered with `503 Service Unavailable`.
+
+Every log line of a job is prefixed with its id (`job#3`), and the output of the commands (stdout and stderr) is logged line by line while they run.
+
+With `queue_file` set, the queue survives restarts: waiting jobs are run at boot. The job that was running when josuke stopped is **not** run again, as it may be the one restarting josuke. Redeliver its webhook to run it again.
+
+#### Jobs API ####
+
+Enabled with `jobs_api`:
+
+```json
+"jobs_api": {
+    "token": "q8iVvMcGQ3vXXhAkB7tSHx1uFAfwTKbb"
+}
+```
+
+- `GET /jobs` lists the running job, then the waiting ones:
+  ```sh
+  curl -H 'Authorization: Bearer <token>' http://localhost:8082/jobs
+  ```
+  ```json
+  [
+    {"id": 3, "description": "github push on monkeydioude/donut@master", "status": "running", "queued_at": "…", "started_at": "…"},
+    {"id": 4, "description": "github push on monkeydioude/donut@master", "status": "waiting", "queued_at": "…"}
+  ]
+  ```
+  `status` is `running`, `stopping` or `waiting`.
+- `POST /jobs/{id}/stop` stops a job:
+  ```sh
+  curl -X POST -H 'Authorization: Bearer <token>' http://localhost:8082/jobs/3/stop
+  ```
+  A waiting job is removed from the queue (`200`, `{"id": 4, "status": "removed"}`). A running job has its command stopped, along with the processes it started (`202`, `{"id": 3, "status": "stopping"}`): they receive `SIGTERM`, and are killed if still running 10 seconds later. The remaining commands of the job are not run.
+
+The token is sent in clear over plain HTTP: enable TLS, or keep the API behind a reverse proxy or on localhost.
 
 ### Tests:
 

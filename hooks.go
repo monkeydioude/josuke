@@ -147,14 +147,31 @@ func (hh *HookHandler) GenericRequest(
 		return
 	}
 
-	for _, ha := range hookActions {
-		if ha.Action == nil {
-			continue
-		}
-		if err := ha.Action.execute(ha.Info); err != nil {
-			log.Printf("[ERR ] Could not execute action. Reason: %s", err)
+	hh.enqueue(rw, describe(hh.Hook.Name, payload), hookActions)
+}
+
+// enqueue queues the actions as a single job and answers right away:
+// builds usually last longer than the SCM webhook timeout (10s for GitHub).
+func (hh *HookHandler) enqueue(rw http.ResponseWriter, desc string, actions []HookAction) {
+	j := hh.Josuke.queue.push(desc, actions)
+	if j == nil {
+		http.Error(rw, "build queue is full", http.StatusServiceUnavailable)
+		return
+	}
+	rw.WriteHeader(http.StatusAccepted)
+	fmt.Fprintf(rw, "queued job #%d\n", j.id)
+}
+
+// describe summarizes what triggered a job, for logs.
+func describe(hookName string, p *Payload) string {
+	s := hookName + " " + p.Action
+	if p.Repository.Name != "" {
+		s += " on " + p.Repository.Name
+		if p.Ref != "" {
+			s += "@" + strings.TrimPrefix(p.Ref, staticRefPrefix)
 		}
 	}
+	return s
 }
 
 type HookAction struct {
@@ -268,9 +285,7 @@ func (hh *HookHandler) BitbucketRequest(rw http.ResponseWriter, req *http.Reques
 		return
 	}
 
-	if err := action.execute(info); err != nil {
-		log.Printf("[ERR ] Could not execute action. Reason: %s", err)
-	}
+	hh.enqueue(rw, describe(hh.Hook.Name, payload), []HookAction{{Action: action, Info: info}})
 }
 
 var type2hookDef = map[string]func(hh *HookHandler) *HookDef{

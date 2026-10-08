@@ -1,15 +1,18 @@
 package josuke
 
 import (
-	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
 	"os/exec"
+	"slices"
 	"strings"
+	"time"
 )
 
 // LogLevel defines the level of a log.
@@ -49,7 +52,11 @@ type Josuke struct {
 	Key              string  `json:"key" yaml:"key"`
 	Store            string  `json:"store" yaml:"store"`
 	HealthcheckRoute string  `json:"healthcheck_route,omitempty" yaml:"healthcheck_route,omitempty"`
-	Deployment       []*Repo `json:"deployment" yaml:"deployment"`
+	Deployment       []*Repo  `json:"deployment" yaml:"deployment"`
+	QueueFile        string   `json:"queue_file,omitempty" yaml:"queue_file,omitempty"`
+	JobsAPI          *JobsAPI `json:"jobs_api,omitempty" yaml:"jobs_api,omitempty"`
+
+	queue *jobQueue
 }
 
 // New creates a josuke HTTP server that handles SCM webhooks.
@@ -64,6 +71,10 @@ func New(configFilePath string) (*Josuke, error) {
 	}
 	j.LogLevel = logLevel
 
+	j.queue, err = newJobQueue(queueSize, j.QueueFile, runJob)
+	if err != nil {
+		return nil, fmt.Errorf("could not load the queue: %v", err)
+	}
 	return j, nil
 }
 
@@ -183,10 +194,10 @@ type Action struct {
 }
 
 // Executes the retrieved set of commands from config
-func (a *Action) execute(i *Info) error {
+func (a *Action) execute(ctx context.Context, i *Info, logger *log.Logger) error {
 	switchToDefaultUser()
 	for _, command := range a.Commands {
-		if err := ExecuteCommand(command, i); err != nil {
+		if err := ExecuteCommand(ctx, command, i, logger); err != nil {
 			return err
 		}
 	}
@@ -229,17 +240,21 @@ func replaceKeyholders(args []string, i *Info) []string {
 	return args
 }
 
-// ExecuteCommand execute a command and its args coming in a form of a slice of string, using Info
-func ExecuteCommand(c []string, i *Info) error {
+// waitDelay is how long a stopped command has to exit before being killed.
+const waitDelay = 10 * time.Second
+
+// ExecuteCommand execute a command and its args coming in a form of a slice of string, using Info.
+// The command output is written to logger line by line, while the command runs.
+// The command is stopped if ctx is cancelled.
+func ExecuteCommand(ctx context.Context, c []string, i *Info, logger *log.Logger) error {
 	if len(c) == 0 {
 		return fmt.Errorf("empty command slice")
 	}
 	name := c[0]
-	// args := make([]string, len(c)-1)
-	args := c[1:]
-	args = replaceKeyholders(args, i)
+	// Clone so placeholders are not replaced in the config itself, they would be stuck to the first request values.
+	args := replaceKeyholders(slices.Clone(c[1:]), i)
 
-	log.Printf("[INFO] executing %s %+v\n", name, args)
+	logger.Printf("[INFO] executing %s %+v\n", name, args)
 
 	if name == "cd" {
 		return chdir(args)
@@ -249,20 +264,37 @@ func ExecuteCommand(c []string, i *Info) error {
 		return SwitchUser(user)
 	}
 
-	if name == "git" && args[0] == "clone" {
+	if name == "git" && len(args) > 0 && args[0] == "clone" {
 		if _, err := os.Stat(i.ProjDir); !os.IsNotExist(err) {
+			logger.Printf("[INFO] %s already exists, skipping clone\n", i.ProjDir)
 			return nil
 		}
 	}
-	cmd := exec.Command(name, args...)
+	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.Env = os.Environ()
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
+	// Same writer for both streams so they are merged in order:
+	// tools like git and docker report their progress on stderr.
+	out := newLineLogger(logger, "[INFO] "+name+" | ")
+	cmd.Stdout = out
+	cmd.Stderr = out
+	// Once stopped, or once exited while a background process still holds its output,
+	// do not wait more than that: it would block the whole queue.
+	cmd.WaitDelay = waitDelay
 
-	if err := NativeExecuteCommand(cmd); err != nil {
-		return fmt.Errorf("could not execute command %s %v: %s %s", name, args, err, stderr.String())
+	start := time.Now()
+	err := NativeExecuteCommand(cmd)
+	out.Flush()
+	elapsed := time.Since(start).Round(100 * time.Millisecond)
+	if ctx.Err() != nil {
+		return fmt.Errorf("command %s %v interrupted after %s", name, args, elapsed)
 	}
-	out, _ := cmd.CombinedOutput()
-	log.Printf("[INFO] %s\n", string(out))
+	if errors.Is(err, exec.ErrWaitDelay) {
+		logger.Printf("[WARN] %s exited, but left a background process holding its output\n", name)
+		err = nil
+	}
+	if err != nil {
+		return fmt.Errorf("command %s %v failed after %s: %w", name, args, elapsed, err)
+	}
+	logger.Printf("[INFO] %s done in %s\n", name, elapsed)
 	return nil
 }

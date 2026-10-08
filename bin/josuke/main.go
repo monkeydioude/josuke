@@ -35,6 +35,7 @@ func main() {
 	}
 
 	j.HandleHooks()
+	j.HandleJobs()
 
 	if j.HealthcheckRoute == "" {
 		j.HealthcheckRoute = "/healthcheck"
