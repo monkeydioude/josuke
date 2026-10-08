@@ -1,0 +1,39 @@
+# Production image. Build from the repository root:
+#   docker build -f build/Dockerfile.prod -t josuke .
+# See "Production Docker image" in the README to run it.
+
+## build ##
+FROM golang:1.25-alpine3.22 AS build
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY *.go ./
+COPY bin ./bin
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/josuke ./bin/josuke
+
+## run ##
+FROM alpine:3.22
+
+# The deployment commands of the config run in this container: add the tools they need.
+# The docker CLI drives the host Docker daemon, through its socket mounted in the container.
+RUN apk add --no-cache \
+        ca-certificates tzdata tini bash make \
+        git openssh-client \
+        docker-cli docker-cli-compose docker-cli-buildx
+# Deployed repositories are mounted from the host and owned by another user: git refuses to work in them otherwise.
+RUN git config --system --add safe.directory '*'
+
+COPY --from=build /out/josuke /usr/local/bin/josuke
+
+# Holds the queue, set "queue_file: /var/lib/josuke/queue.json" in the config.
+RUN mkdir -p /etc/josuke /var/lib/josuke
+VOLUME /var/lib/josuke
+
+EXPOSE 8082
+# Port and route are the defaults, override this if the config changes them.
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget -q -O /dev/null http://127.0.0.1:8082/healthcheck || exit 1
+
+# tini reaps the orphan processes the commands leave behind, josuke as PID 1 would not.
+ENTRYPOINT ["/sbin/tini", "--", "josuke"]
+CMD ["-c", "/etc/josuke/config.yml"]

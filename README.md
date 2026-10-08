@@ -263,6 +263,67 @@ Or with Docker only:
 - docker build -f build/Dockerfile -t josuke .
 - docker run --network="host" -d -e "CONF_FILE=/path/to/config/json" josuke
 
+### Production Docker image
+
+`build/Dockerfile.prod` builds a small image with the josuke binary, and the tools deployment commands usually need: `git`, `ssh`, `make`, `bash`, and the `docker` CLI with `compose` and `buildx`. Add yours to the Dockerfile if needed.
+
+```sh
+docker build -f build/Dockerfile.prod -t josuke .
+```
+
+The deployment commands run **inside the container**, so it needs:
+- the config, at `/etc/josuke/config.yml` (JSON works too, whatever the extension),
+- a volume on `/var/lib/josuke` for the queue file,
+- the host Docker socket, for `docker` commands to drive the host daemon,
+- the deployed projects (`base_dir`), **mounted at the same path as on the host**: `docker compose` sends the bind mount paths of the compose file to the host daemon as they are,
+- the SSH keys used by `git` to fetch the repositories.
+
+The config must listen on all interfaces, the default `localhost` is only reachable from inside the container:
+
+```yaml
+host: 0.0.0.0
+port: 8082
+queue_file: /var/lib/josuke/queue.json
+```
+
+Run with Docker Compose:
+
+```yaml
+services:
+  josuke:
+    image: josuke
+    restart: unless-stopped
+    ports:
+      - "8082:8082"
+    environment:
+      TZ: Europe/Paris # log timestamps, optional
+    volumes:
+      - ./josuke.yml:/etc/josuke/config.yml:ro
+      - josuke-data:/var/lib/josuke
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /srv/apps:/srv/apps # base_dir of the deployments
+      - /root/.ssh:/root/.ssh:ro
+
+volumes:
+  josuke-data:
+```
+
+Or with `docker run`:
+
+```sh
+docker run -d --name josuke --restart unless-stopped -p 8082:8082 \
+  -v "$PWD/josuke.yml:/etc/josuke/config.yml:ro" \
+  -v josuke-data:/var/lib/josuke \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v /srv/apps:/srv/apps \
+  -v /root/.ssh:/root/.ssh:ro \
+  josuke
+```
+
+Logs are read with `docker logs -f josuke`.
+
+Josuke runs as root in the container: switching users (`%user_<name>%`) requires it, and access to the Docker socket gives root on the host anyway. Only expose it behind TLS or a reverse proxy.
+
 ## Healthcheck:
 Once Josuke is running, healthcheck HTTP status is available at `/healthcheck`
 
