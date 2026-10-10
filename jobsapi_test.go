@@ -17,7 +17,7 @@ func Test_Jobs_API_Lists_And_Stops_Jobs(t *testing.T) {
 		queue:   newTestQueue(t, 2, "", blockUntilStopped(started)),
 	}
 	mux := http.NewServeMux()
-	assert.Equal(t, "/jobs", j.registerJobsAPI(mux))
+	assert.Equal(t, "/jobs", j.registerJobsAPI(mux, NewLogBuffer(10, testBoot)))
 	call := func(method, path, token string) *httptest.ResponseRecorder {
 		req := httptest.NewRequest(method, path, nil)
 		if token != "" {
@@ -57,4 +57,33 @@ func Test_Jobs_API_Lists_And_Stops_Jobs(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, call("POST", "/jobs/1/stop", "s3cr3t").Code)
 	assert.Equal(t, http.StatusBadRequest, call("POST", "/jobs/abc/stop", "s3cr3t").Code)
 	assert.Equal(t, http.StatusMethodNotAllowed, call("GET", "/jobs/1/stop", "s3cr3t").Code)
+}
+
+func Test_Jobs_API_Returns_The_Latest_Log_Lines(t *testing.T) {
+	j := &Josuke{JobsAPI: &JobsAPI{Token: "s3cr3t", Route: "/deploys/"}}
+	logs := NewLogBuffer(10, testBoot)
+	writeLines(t, logs, "one", "two", "three")
+	mux := http.NewServeMux()
+	j.registerJobsAPI(mux, logs)
+	call := func(path, token string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest("GET", path, nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		return rec
+	}
+	bootID := logs.Since("", 0).BootID
+
+	assert.Equal(t, http.StatusUnauthorized, call("/deploys/logs", "wrong").Code)
+	assert.Equal(t, http.StatusBadRequest, call("/deploys/logs?after=abc", "s3cr3t").Code)
+
+	rec := call("/deploys/logs", "s3cr3t")
+	require.Equal(t, http.StatusOK, rec.Code)
+	assert.JSONEq(t, `{"boot_id": "`+bootID+`", "last": 3, "lines": [
+		{"seq": 1, "text": "one"}, {"seq": 2, "text": "two"}, {"seq": 3, "text": "three"}
+	]}`, rec.Body.String())
+
+	rec = call("/deploys/logs?after=2&boot_id="+bootID, "s3cr3t")
+	require.Equal(t, http.StatusOK, rec.Code)
+	assert.JSONEq(t, `{"boot_id": "`+bootID+`", "last": 3, "lines": [{"seq": 3, "text": "three"}]}`, rec.Body.String())
 }

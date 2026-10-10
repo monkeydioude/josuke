@@ -223,6 +223,14 @@ Enabled with `jobs_api`:
   ]
   ```
   `status` is `running`, `stopping` or `waiting`.
+- `GET /jobs/logs` returns the last 1000 log lines, as written to stderr. Lines are numbered from 1 at each boot, and `boot_id` changes at each boot:
+  ```sh
+  curl -H 'Authorization: Bearer <token>' 'http://localhost:8082/jobs/logs?after=41&boot_id=dm14nqdyb9cw'
+  ```
+  ```json
+  {"boot_id": "dm14nqdyb9cw", "last": 42, "lines": [{"seq": 42, "text": "2026/10/10 13:39:07 job#1 [INFO] sh | build line 1"}]}
+  ```
+  `after` and `boot_id` are optional: pass the previous `last` and `boot_id` to get the new lines only. Every line kept is returned if `boot_id` is not the current one, as josuke restarted in between.
 - `POST /jobs/{id}/stop` stops a job:
   ```sh
   curl -X POST -H 'Authorization: Bearer <token>' http://localhost:8082/jobs/3/stop
