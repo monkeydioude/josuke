@@ -20,23 +20,25 @@ type JobsAPI struct {
 
 // HandleJobs declares the HTTP handlers of the jobs API, if configured:
 //   - GET <route> lists the running and waiting jobs
+//   - GET <route>/logs returns the latest log lines
 //   - POST <route>/{id}/stop stops a job
-func (j *Josuke) HandleJobs() {
+func (j *Josuke) HandleJobs(logs *LogBuffer) {
 	if j.JobsAPI == nil {
 		return
 	}
 	if j.JobsAPI.Token == "" {
 		log.Fatal("[ERR ] jobs_api requires a token")
 	}
-	route := j.registerJobsAPI(http.DefaultServeMux)
+	route := j.registerJobsAPI(http.DefaultServeMux, logs)
 	if j.LogEnabled(InfoLevel) {
 		log.Printf("[INFO] jobs API available on %s\n", route)
 	}
 }
 
-func (j *Josuke) registerJobsAPI(mux *http.ServeMux) string {
+func (j *Josuke) registerJobsAPI(mux *http.ServeMux, logs *LogBuffer) string {
 	route := cmp.Or(strings.TrimSuffix(j.JobsAPI.Route, "/"), "/jobs")
 	mux.HandleFunc("GET "+route, j.authorized(j.listJobs))
+	mux.HandleFunc("GET "+route+"/logs", j.authorized(listLogs(logs)))
 	mux.HandleFunc("POST "+route+"/{id}/stop", j.authorized(j.stopJob))
 	return route
 }
@@ -55,6 +57,20 @@ func (j *Josuke) authorized(handler http.HandlerFunc) http.HandlerFunc {
 
 func (j *Josuke) listJobs(rw http.ResponseWriter, req *http.Request) {
 	writeJSON(rw, http.StatusOK, j.queue.list())
+}
+
+// listLogs returns the lines logged after the "after" line number of the "boot_id" boot,
+// or every line kept if they are missing.
+func listLogs(logs *LogBuffer) http.HandlerFunc {
+	return func(rw http.ResponseWriter, req *http.Request) {
+		query := req.URL.Query()
+		after, err := strconv.ParseUint(cmp.Or(query.Get("after"), "0"), 10, 64)
+		if err != nil {
+			http.Error(rw, "invalid after line number", http.StatusBadRequest)
+			return
+		}
+		writeJSON(rw, http.StatusOK, logs.Since(query.Get("boot_id"), after))
+	}
 }
 
 func (j *Josuke) stopJob(rw http.ResponseWriter, req *http.Request) {

@@ -3,8 +3,11 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
+	"os"
+	"time"
 
 	"github.com/monkeydioude/josuke"
 )
@@ -28,6 +31,10 @@ func main() {
 	configFileName := flag.String("c", "config.json", "Path to config file, yml or json format")
 	flag.Parse()
 
+	// Set before josuke.New: the job loggers write where the log package writes when they are created.
+	logs := josuke.NewLogBuffer(josuke.LogBufferSize, time.Now())
+	log.SetOutput(io.MultiWriter(os.Stderr, logs))
+
 	j, err := josuke.New(*configFileName)
 
 	if err != nil {
@@ -35,7 +42,7 @@ func main() {
 	}
 
 	j.HandleHooks()
-	j.HandleJobs()
+	j.HandleJobs(logs)
 
 	if j.HealthcheckRoute == "" {
 		j.HealthcheckRoute = "/healthcheck"
