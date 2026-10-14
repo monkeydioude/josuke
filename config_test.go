@@ -38,11 +38,11 @@ func Test_I_Can_Parse_YAML(t *testing.T) {
 				Branches: []Branch{
 					{
 						Name:         "master",
-						Environments: []string{"STORAGE_DIR=/path/to/some/different/dir"},
+						Environments: []string{"STORAGE_DIR=/path/to/some/different/dir", `BRANCH_ENV=""`},
 						Actions: []Action{
 							{
 								Action:       "push",
-								Environments: []string{"STORAGE_DIR=/path/to/some/different/dir/once_more"},
+								Environments: []string{"STORAGE_DIR=/path/to/some/different/dir/once_more", `ACTION_ENV=""`},
 								Commands: [][]string{
 									{"cd", "%base_dir%"},
 									{"git", "clone", "git@github.com:monkeycddioude/josuke.git"},
@@ -119,20 +119,34 @@ deployment:
 }
 
 func Test_Boot_Logs_The_Env_File_And_The_Variable_Keys_Only(t *testing.T) {
+	dir := t.TempDir()
+	envFile := filepath.Join(dir, ".env")
+	require.NoError(t, os.WriteFile(envFile, []byte("FILE_A=secret-file-a\nFILE_B=secret-file-b\n"), 0o644))
+	path := writeConfig(t, dir, `
+deployment:
+  - repo: "monkeydioude/josuke"
+    env_file: ".env"
+    environments:
+      - REPO_ENV=secret-repo
+    branches:
+      - branch: "master"
+        environments:
+          - BRANCH_ENV=secret-branch
+        actions:
+          - action: "push"
+            environments:
+              - ACTION_ENV=secret-action
+`)
 	var buf bytes.Buffer
 	defer log.SetOutput(log.Writer())
 	log.SetOutput(&buf)
-	envFile, err := filepath.Abs("testdata/test.env")
-	require.NoError(t, err)
 
-	_, err = New("testdata/test.config.yaml")
+	_, err := New(path)
 
 	require.NoError(t, err)
-	assert.Contains(t, buf.String(), "[INFO] monkeydioude/josuke env file "+envFile+": STORAGE_DIR, DB_URL, LOVE_ME_LOVE_ME\n")
-	assert.Contains(t, buf.String(), "[INFO] monkeydioude/josuke environments: STORAGE_DIR\n")
-	assert.Contains(t, buf.String(), "[INFO] monkeydioude/josuke@master environments: STORAGE_DIR\n")
-	assert.Contains(t, buf.String(), "[INFO] monkeydioude/josuke@master push environments: STORAGE_DIR\n")
-	assert.NotContains(t, buf.String(), "/path/")
-	assert.NotContains(t, buf.String(), "postgres")
-	assert.NotContains(t, buf.String(), "say that you love me")
+	assert.Contains(t, buf.String(), "[INFO] monkeydioude/josuke env file "+envFile+": FILE_A, FILE_B\n")
+	assert.Contains(t, buf.String(), "[INFO] monkeydioude/josuke environments: REPO_ENV\n")
+	assert.Contains(t, buf.String(), "[INFO] monkeydioude/josuke@master environments: BRANCH_ENV\n")
+	assert.Contains(t, buf.String(), "[INFO] monkeydioude/josuke@master push environments: ACTION_ENV\n")
+	assert.NotContains(t, buf.String(), "secret")
 }
