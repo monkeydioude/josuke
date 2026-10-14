@@ -2,6 +2,7 @@ package josuke
 
 import (
 	"log"
+	"slices"
 )
 
 // Payload fetching useful data from github's json payload
@@ -57,6 +58,9 @@ func (p *Payload) getDeployAction(deployment []*Repo, payloadPath string, payloa
 		PayloadHook:  payloadHook,
 		PayloadPath:  payloadPath,
 		PayloadEvent: payloadEvent,
+		EnvFile:      repo.EnvFile,
+		// The most specific level comes last, to override the others.
+		Env: slices.Concat(repo.Environments, branch.Environments, action.Environments),
 	}
 }
 

@@ -25,7 +25,7 @@ func Test_ExecuteCommand_Logs_Stdout_And_Stderr(t *testing.T) {
 	skipOnWindows(t)
 	var buf bytes.Buffer
 
-	err := ExecuteCommand(context.Background(), []string{"sh", "-c", "echo out; echo err >&2; printf last"}, &Info{}, log.New(&buf, "", 0))
+	err := ExecuteCommand(context.Background(), []string{"sh", "-c", "echo out; echo err >&2; printf last"}, &Info{}, nil, log.New(&buf, "", 0))
 
 	require.NoError(t, err)
 	assert.Contains(t, buf.String(), "[INFO] sh | out\n[INFO] sh | err\n[INFO] sh | last\n")
@@ -36,7 +36,7 @@ func Test_ExecuteCommand_Returns_Exit_Error_And_Logs_Output(t *testing.T) {
 	skipOnWindows(t)
 	var buf bytes.Buffer
 
-	err := ExecuteCommand(context.Background(), []string{"sh", "-c", "echo boom >&2; exit 3"}, &Info{}, log.New(&buf, "", 0))
+	err := ExecuteCommand(context.Background(), []string{"sh", "-c", "echo boom >&2; exit 3"}, &Info{}, nil, log.New(&buf, "", 0))
 
 	assert.ErrorContains(t, err, "exit status 3")
 	assert.Contains(t, buf.String(), "[INFO] sh | boom\n")
@@ -48,8 +48,8 @@ func Test_ExecuteCommand_Does_Not_Replace_Placeholders_In_Config(t *testing.T) {
 	var buf bytes.Buffer
 	logger := log.New(&buf, "", 0)
 
-	require.NoError(t, ExecuteCommand(context.Background(), command, &Info{PayloadPath: "/first"}, logger))
-	require.NoError(t, ExecuteCommand(context.Background(), command, &Info{PayloadPath: "/second"}, logger))
+	require.NoError(t, ExecuteCommand(context.Background(), command, &Info{PayloadPath: "/first"}, nil, logger))
+	require.NoError(t, ExecuteCommand(context.Background(), command, &Info{PayloadPath: "/second"}, nil, logger))
 
 	assert.Equal(t, []string{"echo", "%payload_path%"}, command)
 	assert.Contains(t, buf.String(), "echo | /second\n")
@@ -63,7 +63,7 @@ func Test_ExecuteCommand_Stops_The_Command_And_Its_Children(t *testing.T) {
 	start := time.Now()
 
 	// sleep runs in a child of sh: if only sh was killed, sleep would hold the output until waitDelay.
-	err := ExecuteCommand(ctx, []string{"sh", "-c", "echo started; sleep 30; echo never"}, &Info{}, log.New(&buf, "", 0))
+	err := ExecuteCommand(ctx, []string{"sh", "-c", "echo started; sleep 30; echo never"}, &Info{}, nil, log.New(&buf, "", 0))
 
 	assert.ErrorContains(t, err, "interrupted")
 	assert.Less(t, time.Since(start), waitDelay/2)

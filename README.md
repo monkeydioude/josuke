@@ -163,14 +163,18 @@ The **repository rules** objects are defined as such:
 - `branches`: is an array of objects defining the **branche behavior** towards specified branches.
 - `base_dir`: **OPTIONAL** Allow you to set what should be a base directory usable at **commands definition** level (ex: /var/projects/sources)
 - `proj_dir`: **OPTIONAL** Allow you to set what should be a project directory (or name) usable at **commands definition** level
+- `env_file`: **OPTIONAL** env file whose variables are passed to the **commands**. See [Environment variables](#environment-variables).
+- `environments`: **OPTIONAL** array of `KEY=VALUE` variables passed to the **commands**. See [Environment variables](#environment-variables).
 
 **branch behaviors** objects are defined as such:
 - `branch`: behavior toward a specific branch
 - `actions`: is an array of objects defining the behavior towards specific **actions**.
+- `environments`: **OPTIONAL** array of `KEY=VALUE` variables passed to the **commands**, overriding the repository ones.
 
 **actions** objects are defined as such:
 - `action`: is the kind of action sent by the payload, that has been taken toward the source branch (ex: push on a branch, merge a branch with the source branch...)
 - `commands`: is an array of objects defining the series of **commands** Josuke should trigger for this `action`
+- `environments`: **OPTIONAL** array of `KEY=VALUE` variables passed to the **commands**, overriding the branch and repository ones.
 
 **commands** is an array of array of strings that should contain commands to be executed when an `action` is triggered. 1st index of the array must be the command name. Every following index should be args of the command:
 ```json
@@ -192,6 +196,61 @@ The **repository rules** objects are defined as such:
 - `%payload_hook%`: name of the hook that received the payload (`hook[<num>].name` in the configuration).
 - `%payload_path%`: path to the payload, available if enabled with `store` in the configuration. Otherwise, empty.
 - `%payload_event%`: content of the event request header, be it `x-gogs-event`, `x-github-event`, `x-key-event`. It contains the webhook event, `push` for instance. If the event header is absent, it is empty.
+
+### Environment variables
+
+The **commands** of a deployment get josuke's environment, plus the variables of `env_file` and `environments`:
+
+```yaml
+deployment:
+  - repo: "monkeydioude/donut"
+    env_file: "donut.env"
+    environments:
+      - STORAGE_DIR=/srv/storage
+    base_dir: "/var/www"
+    proj_dir: "donut"
+    branches:
+      - branch: "master"
+        environments:
+          - STORAGE_DIR=/srv/storage/master
+        actions:
+          - action: "push"
+            environments:
+              - STORAGE_DIR=/srv/storage/master/push
+            commands:
+              - ["cd", "%base_dir%"]
+              - ["cd", "%proj_dir%"]
+              - ["make", "deploy"]
+```
+
+When a variable is set more than once, the most specific value wins, from the highest priority to the lowest:
+1. action `environments`,
+2. branch `environments`,
+3. repository `environments`,
+4. repository `env_file`,
+5. josuke's own environment.
+
+`env_file` is only available at the repository level. A relative path is relative to the config file directory. The file is read at each run, so changes apply without restarting josuke. It holds one `KEY=VALUE` per line. Blank lines and lines starting with `#` are ignored, an `export ` prefix and quotes around the value are removed, and variables are not expanded (`$OTHER` stays as is).
+
+Josuke does not start if an `env_file` is missing or invalid, or if an `environments` entry is not `KEY=VALUE`. If the env file is missing at run time, the action fails before running any command.
+
+The env file loaded and the names of the variables are logged, never their values. At boot, for each level:
+
+```
+[INFO] monkeydioude/donut env file /etc/josuke/donut.env: DB_URL, STORAGE_DIR
+[INFO] monkeydioude/donut environments: STORAGE_DIR
+[INFO] monkeydioude/donut@master environments: STORAGE_DIR
+[INFO] monkeydioude/donut@master push environments: STORAGE_DIR
+```
+
+And at each run, with the variables merged from all levels:
+
+```
+job#3 [INFO] env file /etc/josuke/donut.env: DB_URL, STORAGE_DIR
+job#3 [INFO] environments: STORAGE_DIR
+```
+
+Commands are not run through a shell, so `$STORAGE_DIR` in a command argument is not expanded: use `["sh", "-c", "ls $STORAGE_DIR"]` to do so. The hook `command` does not get these variables.
 
 ### Job queue
 

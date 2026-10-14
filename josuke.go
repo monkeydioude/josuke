@@ -71,6 +71,10 @@ func New(configFilePath string) (*Josuke, error) {
 	}
 	j.LogLevel = logLevel
 
+	if err := j.checkDeploymentEnv(); err != nil {
+		return nil, fmt.Errorf("invalid deployment environment: %v", err)
+	}
+
 	j.queue, err = newJobQueue(queueSize, j.QueueFile, runJob)
 	if err != nil {
 		return nil, fmt.Errorf("could not load the queue: %v", err)
@@ -159,6 +163,9 @@ type Repo struct {
 	Branches []Branch `json:"branches" yaml:"branches"`
 	BaseDir  string   `json:"base_dir" yaml:"base_dir"`
 	ProjDir  string   `json:"proj_dir" yaml:"proj_dir"`
+	// EnvFile is read at each action run, its variables are overridden by the environments.
+	EnvFile      string   `json:"env_file,omitempty" yaml:"env_file,omitempty"`
+	Environments []string `json:"environments,omitempty" yaml:"environments,omitempty"`
 }
 
 // Matches repo names from payload and config
@@ -174,12 +181,16 @@ type Info struct {
 	PayloadHook  string
 	PayloadPath  string
 	PayloadEvent string
+	EnvFile      string
+	// Env holds KEY=VALUE variables, a key can be repeated: the last value wins.
+	Env []string
 }
 
 // Branch mirrors config's branch section, containing branch Name & Actions linked to it
 type Branch struct {
-	Name    string   `json:"branch" yaml:"branch"`
-	Actions []Action `json:"actions" yaml:"actions"`
+	Name         string   `json:"branch" yaml:"branch"`
+	Actions      []Action `json:"actions" yaml:"actions"`
+	Environments []string `json:"environments,omitempty" yaml:"environments,omitempty"`
 }
 
 // Matches a branch name using payload & concatenation of static "refs/heads/" + config's branch name
@@ -189,15 +200,25 @@ func (b Branch) matches(trial string) bool {
 
 // Action contains set of commands from config matching the type of action sent from github (if action is "push", then we do "these" commands)
 type Action struct {
-	Action   string     `json:"action" yaml:"action"`
-	Commands [][]string `json:"commands" yaml:"commands"`
+	Action       string     `json:"action" yaml:"action"`
+	Commands     [][]string `json:"commands" yaml:"commands"`
+	Environments []string   `json:"environments,omitempty" yaml:"environments,omitempty"`
 }
 
 // Executes the retrieved set of commands from config
 func (a *Action) execute(ctx context.Context, i *Info, logger *log.Logger) error {
+	// Read once, so every command of the action gets the same env file content.
+	extra, err := i.extraEnv(logger)
+	if err != nil {
+		return err
+	}
+	var env []string
+	if len(extra) > 0 {
+		env = append(os.Environ(), extra...)
+	}
 	switchToDefaultUser()
 	for _, command := range a.Commands {
-		if err := ExecuteCommand(ctx, command, i, logger); err != nil {
+		if err := ExecuteCommand(ctx, command, i, env, logger); err != nil {
 			return err
 		}
 	}
@@ -245,8 +266,8 @@ const waitDelay = 10 * time.Second
 
 // ExecuteCommand execute a command and its args coming in a form of a slice of string, using Info.
 // The command output is written to logger line by line, while the command runs.
-// The command is stopped if ctx is cancelled.
-func ExecuteCommand(ctx context.Context, c []string, i *Info, logger *log.Logger) error {
+// The command is stopped if ctx is cancelled. It runs with the env variables, or josuke's ones if nil.
+func ExecuteCommand(ctx context.Context, c []string, i *Info, env []string, logger *log.Logger) error {
 	if len(c) == 0 {
 		return fmt.Errorf("empty command slice")
 	}
@@ -271,7 +292,7 @@ func ExecuteCommand(ctx context.Context, c []string, i *Info, logger *log.Logger
 		}
 	}
 	cmd := exec.CommandContext(ctx, name, args...)
-	cmd.Env = os.Environ()
+	cmd.Env = env
 	// Same writer for both streams so they are merged in order:
 	// tools like git and docker report their progress on stderr.
 	out := newLineLogger(logger, "[INFO] "+name+" | ")
